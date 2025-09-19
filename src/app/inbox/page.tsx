@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useRouter } from 'next/navigation'
 import { 
@@ -10,9 +10,8 @@ import {
   orderBy, 
   onSnapshot, 
   addDoc, 
-  doc, 
   getDoc,
-  updateDoc,
+  doc as firestoreDoc,
   serverTimestamp 
 } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
@@ -28,7 +27,7 @@ interface Message {
   senderId: string
   receiverId: string
   content: string
-  timestamp: any
+  timestamp: unknown
   read: boolean
   senderName?: string
   receiverName?: string
@@ -39,12 +38,12 @@ interface Conversation {
   participantId: string
   participantName: string
   lastMessage: string
-  lastMessageTime: any
+  lastMessageTime: unknown
   unreadCount: number
 }
 
 export default function Inbox() {
-  const { currentUser } = useAuth()
+  const { user } = useAuth()
   const router = useRouter()
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null)
@@ -53,41 +52,39 @@ export default function Inbox() {
   const [searchTerm, setSearchTerm] = useState('')
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    if (currentUser) {
-      loadConversations()
-    } else {
-      setLoading(false)
-    }
-  }, [currentUser])
+  const markMessagesAsRead = useCallback(async (participantId: string) => {
+    if (!user) return
 
-  useEffect(() => {
-    if (selectedConversation && currentUser) {
-      loadMessages(selectedConversation)
+    try {
+      // This would need to be implemented with a proper conversation document
+      // For now, we'll just update the UI
+      console.log('Marking messages as read for:', participantId)
+    } catch (error) {
+      console.error('Error marking messages as read:', error)
     }
-  }, [selectedConversation, currentUser])
+  }, [user])
 
-  const loadConversations = async () => {
-    if (!currentUser) return
+  const loadConversations = useCallback(async () => {
+    if (!user) return
 
     try {
       const messagesRef = collection(db, 'messages')
       const q = query(
         messagesRef,
-        where('participants', 'array-contains', currentUser.uid),
+        where('participants', 'array-contains', user.uid),
         orderBy('lastMessageTime', 'desc')
       )
 
       const unsubscribe = onSnapshot(q, async (snapshot) => {
         const conversationMap = new Map<string, Conversation>()
         
-        for (const doc of snapshot.docs) {
-          const data = doc.data()
-          const otherParticipantId = data.participants.find((id: string) => id !== currentUser.uid)
+        for (const docSnapshot of snapshot.docs) {
+          const data = docSnapshot.data()
+          const otherParticipantId = data.participants.find((id: string) => id !== user.uid)
           
           if (otherParticipantId) {
             // Get participant info
-            const participantDoc = await getDoc(doc(db, 'users', otherParticipantId))
+            const participantDoc = await getDoc(firestoreDoc(db, 'users', otherParticipantId))
             const participantName = participantDoc.exists() 
               ? participantDoc.data().displayName || participantDoc.data().email
               : 'Unknown User'
@@ -98,7 +95,7 @@ export default function Inbox() {
               participantName,
               lastMessage: data.lastMessage || '',
               lastMessageTime: data.lastMessageTime,
-              unreadCount: data.unreadCounts?.[currentUser.uid] || 0
+              unreadCount: data.unreadCounts?.[user.uid] || 0
             })
           }
         }
@@ -112,27 +109,27 @@ export default function Inbox() {
       console.error('Error loading conversations:', error)
       setLoading(false)
     }
-  }
+  }, [user])
 
-  const loadMessages = async (participantId: string) => {
-    if (!currentUser) return
+  const loadMessages = useCallback(async (participantId: string) => {
+    if (!user) return
 
     try {
       const messagesRef = collection(db, 'messages')
       const q = query(
         messagesRef,
-        where('participants', 'array-contains', currentUser.uid),
+        where('participants', 'array-contains', user.uid),
         orderBy('timestamp', 'asc')
       )
 
       const unsubscribe = onSnapshot(q, (snapshot) => {
         const conversationMessages: Message[] = []
         
-        snapshot.docs.forEach(doc => {
-          const data = doc.data()
+        snapshot.docs.forEach(docSnapshot => {
+          const data = docSnapshot.data()
           if (data.participants.includes(participantId)) {
             conversationMessages.push({
-              id: doc.id,
+              id: docSnapshot.id,
               ...data
             } as Message)
           }
@@ -148,35 +145,32 @@ export default function Inbox() {
     } catch (error) {
       console.error('Error loading messages:', error)
     }
-  }
+  }, [user, markMessagesAsRead])
 
-  const markMessagesAsRead = async (participantId: string) => {
-    if (!currentUser) return
-
-    try {
-      const messagesRef = collection(db, 'messages')
-      const q = query(
-        messagesRef,
-        where('participants', 'array-contains', currentUser.uid)
-      )
-
-      // This would need to be implemented with a proper conversation document
-      // For now, we'll just update the UI
-    } catch (error) {
-      console.error('Error marking messages as read:', error)
+  useEffect(() => {
+    if (user) {
+      loadConversations()
+    } else {
+      setLoading(false)
     }
-  }
+  }, [user, loadConversations])
+
+  useEffect(() => {
+    if (selectedConversation && user) {
+      loadMessages(selectedConversation)
+    }
+  }, [selectedConversation, user, loadMessages])
 
   const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!newMessage.trim() || !selectedConversation || !currentUser) return
+    if (!newMessage.trim() || !selectedConversation || !user) return
 
     try {
       const messageData = {
-        senderId: currentUser.uid,
+        senderId: user.uid,
         receiverId: selectedConversation,
         content: newMessage.trim(),
-        participants: [currentUser.uid, selectedConversation],
+        participants: [user.uid, selectedConversation],
         timestamp: serverTimestamp(),
         read: false,
         lastMessage: newMessage.trim(),
@@ -207,7 +201,7 @@ export default function Inbox() {
     )
   }
 
-  if (!currentUser) {
+  if (!user) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -331,21 +325,23 @@ export default function Inbox() {
                         <div
                           key={message.id}
                           className={`flex ${
-                            message.senderId === currentUser.uid ? 'justify-end' : 'justify-start'
+                            message.senderId === user.uid ? 'justify-end' : 'justify-start'
                           }`}
                         >
                           <div
                             className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
-                              message.senderId === currentUser.uid
+                              message.senderId === user.uid
                                 ? 'bg-blue-600 text-white'
                                 : 'bg-gray-200 text-gray-900'
                             }`}
                           >
                             <p className="text-sm">{message.content}</p>
                             <p className={`text-xs mt-1 ${
-                              message.senderId === currentUser.uid ? 'text-blue-100' : 'text-gray-500'
+                              message.senderId === user.uid ? 'text-blue-100' : 'text-gray-500'
                             }`}>
-                              {message.timestamp?.toDate?.()?.toLocaleTimeString() || 'Just now'}
+                              {message.timestamp && typeof message.timestamp === 'object' && 'toDate' in message.timestamp
+                                ? (message.timestamp as { toDate: () => Date }).toDate().toLocaleTimeString()
+                                : 'Just now'}
                             </p>
                           </div>
                         </div>

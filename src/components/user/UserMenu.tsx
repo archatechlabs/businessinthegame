@@ -18,7 +18,7 @@ function classNames(...classes: string[]) {
 }
 
 export default function UserMenu() {
-  const { currentUser, logout } = useAuth()
+  const { user, userProfile, logout } = useAuth()
   const router = useRouter()
 
   const handleLogout = async () => {
@@ -59,7 +59,7 @@ export default function UserMenu() {
     }
   ]
 
-  if (!currentUser) return null
+  if (!user) return null
 
   return (
     <Menu as="div" className="relative ml-3">
@@ -68,7 +68,7 @@ export default function UserMenu() {
           <span className="sr-only">Open user menu</span>
           <div className="h-8 w-8 rounded-full bg-blue-700 flex items-center justify-center">
             <span className="text-white font-medium text-sm">
-              {currentUser.displayName?.charAt(0) || currentUser.email?.charAt(0) || 'U'}
+              {userProfile?.name?.charAt(0) || user.displayName?.charAt(0) || user.email?.charAt(0) || 'U'}
             </span>
           </div>
         </Menu.Button>
@@ -86,10 +86,10 @@ export default function UserMenu() {
           {/* User Info Header */}
           <div className="px-4 py-3 border-b border-gray-200">
             <p className="text-sm font-medium text-gray-900">
-              {currentUser.displayName || 'User'}
+              {userProfile?.name || user.displayName || 'User'}
             </p>
             <p className="text-sm text-gray-500 truncate">
-              {currentUser.email}
+              {user.email}
             </p>
           </div>
 

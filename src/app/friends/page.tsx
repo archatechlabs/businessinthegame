@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useRouter } from 'next/navigation'
 import { 
@@ -11,9 +11,10 @@ import {
   onSnapshot, 
   addDoc, 
   deleteDoc,
-  doc, 
+  doc as firestoreDoc, 
   getDoc,
   getDocs,
+  updateDoc,
   serverTimestamp 
 } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
@@ -43,7 +44,7 @@ interface FriendRequest {
   fromUserId: string
   toUserId: string
   status: 'pending' | 'accepted' | 'declined'
-  createdAt: any
+  createdAt: unknown
   fromUserName?: string
   toUserName?: string
 }
@@ -53,11 +54,11 @@ interface Friend {
   userId: string
   userName: string
   userEmail: string
-  addedAt: any
+  addedAt: unknown
 }
 
 export default function Friends() {
-  const { currentUser } = useAuth()
+  const { user } = useAuth()
   const router = useRouter()
   const [activeTab, setActiveTab] = useState<'friends' | 'requests' | 'discover'>('friends')
   const [friends, setFriends] = useState<Friend[]>([])
@@ -66,24 +67,14 @@ export default function Friends() {
   const [searchTerm, setSearchTerm] = useState('')
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    if (currentUser) {
-      loadFriends()
-      loadFriendRequests()
-      loadAllUsers()
-    } else {
-      setLoading(false)
-    }
-  }, [currentUser])
-
-  const loadFriends = async () => {
-    if (!currentUser) return
+  const loadFriends = useCallback(async () => {
+    if (!user) return
 
     try {
       const friendsRef = collection(db, 'friends')
       const q = query(
         friendsRef,
-        where('userId', '==', currentUser.uid),
+        where('userId', '==', user.uid),
         orderBy('addedAt', 'desc')
       )
 
@@ -104,16 +95,16 @@ export default function Friends() {
       console.error('Error loading friends:', error)
       setLoading(false)
     }
-  }
+  }, [user])
 
-  const loadFriendRequests = async () => {
-    if (!currentUser) return
+  const loadFriendRequests = useCallback(async () => {
+    if (!user) return
 
     try {
       const requestsRef = collection(db, 'friendRequests')
       const q = query(
         requestsRef,
-        where('toUserId', '==', currentUser.uid),
+        where('toUserId', '==', user.uid),
         where('status', '==', 'pending'),
         orderBy('createdAt', 'desc')
       )
@@ -121,15 +112,15 @@ export default function Friends() {
       const unsubscribe = onSnapshot(q, async (snapshot) => {
         const requestsList: FriendRequest[] = []
         
-        for (const doc of snapshot.docs) {
-          const data = doc.data()
-          const fromUserDoc = await getDoc(doc(db, 'users', data.fromUserId))
+        for (const docSnapshot of snapshot.docs) {
+          const data = docSnapshot.data()
+          const fromUserDoc = await getDoc(firestoreDoc(db, 'users', data.fromUserId))
           const fromUserName = fromUserDoc.exists() 
             ? fromUserDoc.data().displayName || fromUserDoc.data().email
             : 'Unknown User'
 
           requestsList.push({
-            id: doc.id,
+            id: docSnapshot.id,
             ...data,
             fromUserName
           } as FriendRequest)
@@ -142,21 +133,21 @@ export default function Friends() {
     } catch (error) {
       console.error('Error loading friend requests:', error)
     }
-  }
+  }, [user])
 
-  const loadAllUsers = async () => {
-    if (!currentUser) return
+  const loadAllUsers = useCallback(async () => {
+    if (!user) return
 
     try {
       const usersRef = collection(db, 'users')
       const snapshot = await getDocs(usersRef)
       const usersList: User[] = []
       
-      snapshot.docs.forEach(doc => {
-        if (doc.id !== currentUser.uid) {
+      snapshot.docs.forEach(docSnapshot => {
+        if (docSnapshot.id !== user.uid) {
           usersList.push({
-            id: doc.id,
-            ...doc.data()
+            id: docSnapshot.id,
+            ...docSnapshot.data()
           } as User)
         }
       })
@@ -165,14 +156,24 @@ export default function Friends() {
     } catch (error) {
       console.error('Error loading users:', error)
     }
-  }
+  }, [user])
+
+  useEffect(() => {
+    if (user) {
+      loadFriends()
+      loadFriendRequests()
+      loadAllUsers()
+    } else {
+      setLoading(false)
+    }
+  }, [user, loadFriends, loadFriendRequests, loadAllUsers])
 
   const sendFriendRequest = async (toUserId: string) => {
-    if (!currentUser) return
+    if (!user) return
 
     try {
       await addDoc(collection(db, 'friendRequests'), {
-        fromUserId: currentUser.uid,
+        fromUserId: user.uid,
         toUserId,
         status: 'pending',
         createdAt: serverTimestamp()
@@ -183,10 +184,10 @@ export default function Friends() {
   }
 
   const respondToFriendRequest = async (requestId: string, status: 'accepted' | 'declined') => {
-    if (!currentUser) return
+    if (!user) return
 
     try {
-      const requestRef = doc(db, 'friendRequests', requestId)
+      const requestRef = firestoreDoc(db, 'friendRequests', requestId)
       await updateDoc(requestRef, { status })
 
       if (status === 'accepted') {
@@ -197,7 +198,7 @@ export default function Friends() {
         if (requestData) {
           // Add friend for current user
           await addDoc(collection(db, 'friends'), {
-            userId: currentUser.uid,
+            userId: user.uid,
             friendId: requestData.fromUserId,
             addedAt: serverTimestamp()
           })
@@ -205,7 +206,7 @@ export default function Friends() {
           // Add friend for the other user
           await addDoc(collection(db, 'friends'), {
             userId: requestData.fromUserId,
-            friendId: currentUser.uid,
+            friendId: user.uid,
             addedAt: serverTimestamp()
           })
         }
@@ -216,13 +217,13 @@ export default function Friends() {
   }
 
   const removeFriend = async (friendId: string) => {
-    if (!currentUser) return
+    if (!user) return
 
     try {
       // Remove from both users' friends lists
       const friendsRef = collection(db, 'friends')
-      const q1 = query(friendsRef, where('userId', '==', currentUser.uid), where('friendId', '==', friendId))
-      const q2 = query(friendsRef, where('userId', '==', friendId), where('friendId', '==', currentUser.uid))
+      const q1 = query(friendsRef, where('userId', '==', user.uid), where('friendId', '==', friendId))
+      const q2 = query(friendsRef, where('userId', '==', friendId), where('friendId', '==', user.uid))
       
       const [snapshot1, snapshot2] = await Promise.all([
         getDocs(q1),
@@ -230,9 +231,9 @@ export default function Friends() {
       ])
 
       // Delete both friend relationships
-      const deletePromises = []
-      snapshot1.docs.forEach(doc => deletePromises.push(deleteDoc(doc.ref)))
-      snapshot2.docs.forEach(doc => deletePromises.push(deleteDoc(doc.ref)))
+      const deletePromises: Promise<void>[] = []
+      snapshot1.docs.forEach(docSnapshot => deletePromises.push(deleteDoc(docSnapshot.ref)))
+      snapshot2.docs.forEach(docSnapshot => deletePromises.push(deleteDoc(docSnapshot.ref)))
       
       await Promise.all(deletePromises)
     } catch (error) {
@@ -255,7 +256,7 @@ export default function Friends() {
     )
   }
 
-  if (!currentUser) {
+  if (!user) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -291,7 +292,7 @@ export default function Friends() {
               ].map((tab) => (
                 <button
                   key={tab.id}
-                  onClick={() => setActiveTab(tab.id as any)}
+                  onClick={() => setActiveTab(tab.id as 'friends' | 'requests' | 'discover')}
                   className={`py-2 px-1 border-b-2 font-medium text-sm ${
                     activeTab === tab.id
                       ? 'border-blue-500 text-blue-600'

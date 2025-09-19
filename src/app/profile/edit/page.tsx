@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useRouter } from 'next/navigation'
 import { doc, updateDoc, getDoc } from 'firebase/firestore'
@@ -9,7 +9,7 @@ import { db } from '@/lib/firebase'
 import { ArrowLeftIcon, UserIcon, EnvelopeIcon, PhoneIcon, MapPinIcon, BriefcaseIcon } from '@heroicons/react/24/outline'
 
 export default function EditProfile() {
-  const { currentUser } = useAuth()
+  const { user, userProfile } = useAuth()
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -29,24 +29,11 @@ export default function EditProfile() {
     instagram: ''
   })
 
-  useEffect(() => {
-    if (currentUser) {
-      setFormData(prev => ({
-        ...prev,
-        displayName: currentUser.displayName || '',
-        email: currentUser.email || ''
-      }))
-      
-      // Load additional profile data from Firestore
-      loadProfileData()
-    }
-  }, [currentUser])
-
-  const loadProfileData = async () => {
-    if (!currentUser) return
+  const loadProfileData = useCallback(async () => {
+    if (!user) return
     
     try {
-      const userDoc = await getDoc(doc(db, 'users', currentUser.uid))
+      const userDoc = await getDoc(doc(db, 'users', user.uid))
       if (userDoc.exists()) {
         const userData = userDoc.data()
         setFormData(prev => ({
@@ -57,7 +44,20 @@ export default function EditProfile() {
     } catch (error) {
       console.error('Error loading profile data:', error)
     }
-  }
+  }, [user])
+
+  useEffect(() => {
+    if (user) {
+      setFormData(prev => ({
+        ...prev,
+        displayName: userProfile?.name || user.displayName || '',
+        email: user.email || ''
+      }))
+      
+      // Load additional profile data from Firestore
+      loadProfileData()
+    }
+  }, [user, userProfile, loadProfileData])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
@@ -69,7 +69,7 @@ export default function EditProfile() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!currentUser) return
+    if (!user) return
 
     setLoading(true)
     setError('')
@@ -77,12 +77,12 @@ export default function EditProfile() {
 
     try {
       // Update Firebase Auth profile
-      await updateProfile(currentUser, {
+      await updateProfile(user, {
         displayName: formData.displayName
       })
 
       // Update Firestore user document
-      const userRef = doc(db, 'users', currentUser.uid)
+      const userRef = doc(db, 'users', user.uid)
       await updateDoc(userRef, {
         displayName: formData.displayName,
         phone: formData.phone,
@@ -101,14 +101,15 @@ export default function EditProfile() {
       setTimeout(() => {
         router.push('/profile')
       }, 1500)
-    } catch (error: any) {
-      setError(error.message || 'Failed to update profile')
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to update profile'
+      setError(errorMessage)
     } finally {
       setLoading(false)
     }
   }
 
-  if (!currentUser) {
+  if (!user) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">

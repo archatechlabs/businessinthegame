@@ -17,7 +17,7 @@ const navigation = [
 export default function Navigation() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [isRegistrationOpen, setIsRegistrationOpen] = useState(false)
-  const { currentUser } = useAuth()
+  const { user, userProfile } = useAuth()
 
   return (
     <header className="bg-blue-900">
@@ -51,7 +51,7 @@ export default function Navigation() {
           ))}
         </div>
         <div className="hidden lg:flex lg:flex-1 lg:justify-end lg:items-center lg:gap-4">
-          {currentUser ? (
+          {user ? (
             <UserMenu />
           ) : (
             <button
@@ -99,11 +99,11 @@ export default function Navigation() {
                 ))}
               </div>
               <div className="py-6">
-                {currentUser ? (
+                {user ? (
                   <div className="space-y-2">
                     <div className="px-3 py-2">
-                      <p className="text-sm text-white font-medium">{currentUser.displayName || 'User'}</p>
-                      <p className="text-xs text-blue-200">{currentUser.email}</p>
+                      <p className="text-sm text-white font-medium">{userProfile?.name || user.displayName || 'User'}</p>
+                      <p className="text-xs text-blue-200">{user.email}</p>
                     </div>
                     <a
                       href="/profile"

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useRouter } from 'next/navigation'
 import { doc, updateDoc, getDoc } from 'firebase/firestore'
@@ -16,7 +16,7 @@ import {
 } from '@heroicons/react/24/outline'
 
 export default function Settings() {
-  const { currentUser, logout } = useAuth()
+  const { user } = useAuth()
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -54,17 +54,11 @@ export default function Settings() {
     confirm: false
   })
 
-  useEffect(() => {
-    if (currentUser) {
-      loadSettings()
-    }
-  }, [currentUser])
-
-  const loadSettings = async () => {
-    if (!currentUser) return
+  const loadSettings = useCallback(async () => {
+    if (!user) return
 
     try {
-      const userDoc = await getDoc(doc(db, 'users', currentUser.uid))
+      const userDoc = await getDoc(doc(db, 'users', user.uid))
       if (userDoc.exists()) {
         const userData = userDoc.data()
         setNotifications(userData.notifications || notifications)
@@ -73,7 +67,13 @@ export default function Settings() {
     } catch (error) {
       console.error('Error loading settings:', error)
     }
-  }
+  }, [user, notifications, privacy])
+
+  useEffect(() => {
+    if (user) {
+      loadSettings()
+    }
+  }, [user, loadSettings])
 
   const handleNotificationChange = (key: string, value: boolean) => {
     setNotifications(prev => ({
@@ -90,14 +90,14 @@ export default function Settings() {
   }
 
   const saveSettings = async () => {
-    if (!currentUser) return
+    if (!user) return
 
     setLoading(true)
     setError('')
     setSuccess('')
 
     try {
-      const userRef = doc(db, 'users', currentUser.uid)
+      const userRef = doc(db, 'users', user.uid)
       await updateDoc(userRef, {
         notifications,
         privacy,
@@ -105,8 +105,9 @@ export default function Settings() {
       })
 
       setSuccess('Settings saved successfully!')
-    } catch (error: any) {
-      setError(error.message || 'Failed to save settings')
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to save settings'
+      setError(errorMessage)
     } finally {
       setLoading(false)
     }
@@ -114,7 +115,7 @@ export default function Settings() {
 
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!currentUser) return
+    if (!user) return
 
     if (passwordForm.newPassword !== passwordForm.confirmPassword) {
       setError('New passwords do not match')
@@ -133,13 +134,13 @@ export default function Settings() {
     try {
       // Re-authenticate user
       const credential = EmailAuthProvider.credential(
-        currentUser.email!,
+        user.email!,
         passwordForm.currentPassword
       )
-      await reauthenticateWithCredential(currentUser, credential)
+      await reauthenticateWithCredential(user, credential)
 
       // Update password
-      await updatePassword(currentUser, passwordForm.newPassword)
+      await updatePassword(user, passwordForm.newPassword)
 
       setSuccess('Password updated successfully!')
       setPasswordForm({
@@ -147,8 +148,9 @@ export default function Settings() {
         newPassword: '',
         confirmPassword: ''
       })
-    } catch (error: any) {
-      setError(error.message || 'Failed to update password')
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to update password'
+      setError(errorMessage)
     } finally {
       setLoading(false)
     }
@@ -163,7 +165,7 @@ export default function Settings() {
     alert('Account deletion feature coming soon! Please contact support.')
   }
 
-  if (!currentUser) {
+  if (!user) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">

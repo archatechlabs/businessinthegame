@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useRouter } from 'next/navigation'
 import { doc, getDoc } from 'firebase/firestore'
@@ -28,36 +28,28 @@ interface UserProfile {
   linkedin?: string
   twitter?: string
   instagram?: string
-  createdAt?: any
-  updatedAt?: any
+  createdAt?: unknown
+  updatedAt?: unknown
 }
 
 export default function Profile() {
-  const { currentUser } = useAuth()
+  const { user, userProfile } = useAuth()
   const router = useRouter()
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    if (currentUser) {
-      loadProfile()
-    } else {
-      setLoading(false)
-    }
-  }, [currentUser])
-
-  const loadProfile = async () => {
-    if (!currentUser) return
+  const loadProfile = useCallback(async () => {
+    if (!user) return
 
     try {
-      const userDoc = await getDoc(doc(db, 'users', currentUser.uid))
+      const userDoc = await getDoc(doc(db, 'users', user.uid))
       if (userDoc.exists()) {
         setProfile(userDoc.data() as UserProfile)
       } else {
         // Create basic profile if it doesn't exist
         setProfile({
-          displayName: currentUser.displayName || '',
-          email: currentUser.email || ''
+          displayName: userProfile?.name || user.displayName || '',
+          email: user.email || ''
         })
       }
     } catch (error) {
@@ -65,7 +57,15 @@ export default function Profile() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [user, userProfile])
+
+  useEffect(() => {
+    if (user) {
+      loadProfile()
+    } else {
+      setLoading(false)
+    }
+  }, [user, loadProfile])
 
   if (loading) {
     return (
@@ -78,7 +78,7 @@ export default function Profile() {
     )
   }
 
-  if (!currentUser) {
+  if (!user) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -110,13 +110,13 @@ export default function Profile() {
               <div className="text-center">
                 <div className="h-24 w-24 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
                   <span className="text-white text-2xl font-bold">
-                    {profile?.displayName?.charAt(0) || currentUser.email?.charAt(0) || 'U'}
+                    {profile?.displayName?.charAt(0) || userProfile?.name?.charAt(0) || user.displayName?.charAt(0) || user.email?.charAt(0) || 'U'}
                   </span>
                 </div>
                 <h2 className="text-xl font-bold text-gray-900">
-                  {profile?.displayName || 'User'}
+                  {profile?.displayName || userProfile?.name || user.displayName || 'User'}
                 </h2>
-                <p className="text-gray-600">{profile?.email || currentUser.email}</p>
+                <p className="text-gray-600">{profile?.email || user.email}</p>
                 {profile?.jobTitle && (
                   <p className="text-sm text-gray-500 mt-1">{profile.jobTitle}</p>
                 )}
@@ -152,14 +152,14 @@ export default function Profile() {
                       <UserIcon className="h-5 w-5 text-gray-400 mr-3" />
                       <div>
                         <p className="text-sm font-medium text-gray-900">Display Name</p>
-                        <p className="text-sm text-gray-600">{profile?.displayName || 'Not set'}</p>
+                        <p className="text-sm text-gray-600">{profile?.displayName || userProfile?.name || user.displayName || 'Not set'}</p>
                       </div>
                     </div>
                     <div className="flex items-center">
                       <EnvelopeIcon className="h-5 w-5 text-gray-400 mr-3" />
                       <div>
                         <p className="text-sm font-medium text-gray-900">Email</p>
-                        <p className="text-sm text-gray-600">{profile?.email || currentUser.email}</p>
+                        <p className="text-sm text-gray-600">{profile?.email || user.email}</p>
                       </div>
                     </div>
                     {profile?.phone && (
