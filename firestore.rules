@@ -28,5 +28,47 @@ service cloud.firestore {
       allow create: if request.auth != null && 
         request.auth.uid == request.resource.data.userId;
     }
+
+    // Friends collection - allow users to manage their own friend relationships
+    match /friends/{friendId} {
+      allow read, write: if request.auth != null && 
+        (request.auth.uid == resource.data.userId1 || request.auth.uid == resource.data.userId2);
+      allow create: if request.auth != null && 
+        (request.auth.uid == request.resource.data.userId1 || request.auth.uid == request.resource.data.userId2);
+    }
+
+    // Friend requests collection - allow users to manage their own friend requests
+    match /friendRequests/{requestId} {
+      allow read, write: if request.auth != null && 
+        (request.auth.uid == resource.data.fromUserId || request.auth.uid == resource.data.toUserId);
+      allow create: if request.auth != null && 
+        request.auth.uid == request.resource.data.fromUserId;
+    }
+
+    // Conversations collection - allow users to access conversations they participate in
+    match /conversations/{conversationId} {
+      allow read, write: if request.auth != null && 
+        request.auth.uid in resource.data.participants;
+      allow create: if request.auth != null && 
+        request.auth.uid in request.resource.data.participants;
+      
+      // Messages subcollection within conversations
+      match /messages/{messageId} {
+        allow read: if request.auth != null && 
+          request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants;
+        allow write: if request.auth != null && 
+          request.auth.uid == resource.data.senderId;
+        allow create: if request.auth != null && 
+          request.auth.uid == request.resource.data.senderId;
+      }
+    }
+
+    // Alternative messages collection (if using flat structure)
+    match /messages/{messageId} {
+      allow read, write: if request.auth != null && 
+        (request.auth.uid == resource.data.senderId || request.auth.uid == resource.data.receiverId);
+      allow create: if request.auth != null && 
+        request.auth.uid == request.resource.data.senderId;
+    }
   }
 }
