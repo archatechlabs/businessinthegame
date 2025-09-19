@@ -3,8 +3,18 @@
 import { useState } from 'react'
 import { TicketIcon, CalendarIcon, MapPinIcon, QrCodeIcon } from '@heroicons/react/24/outline'
 
+interface Ticket {
+  id: string
+  eventTitle: string
+  eventDate: string
+  eventLocation: string
+  status: string
+  qrCode: string
+  purchaseDate: string
+}
+
 export default function TicketsPage() {
-  const [tickets] = useState([
+  const [tickets] = useState<Ticket[]>([
     {
       id: '1',
       eventTitle: 'BIG Networking Mixer',
@@ -34,7 +44,7 @@ export default function TicketsPage() {
     }
   ])
 
-  const formatDate = (dateString) => {
+  const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       weekday: 'long',
       year: 'numeric',
@@ -45,7 +55,7 @@ export default function TicketsPage() {
     })
   }
 
-  const getStatusColor = (status) => {
+  const getStatusColor = (status: string) => {
     switch (status) {
       case 'active':
         return 'bg-green-100 text-green-800'

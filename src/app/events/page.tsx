@@ -1,10 +1,22 @@
 'use client'
 
 import { useState } from 'react'
-import { CalendarIcon, MapPinIcon, CurrencyDollarIcon, UserGroupIcon } from '@heroicons/react/24/outline'
+import { CalendarIcon, MapPinIcon, UserGroupIcon } from '@heroicons/react/24/outline'
+
+interface Event {
+  id: string
+  title: string
+  description: string
+  date: string
+  location: string
+  price: number
+  capacity: number
+  image: string
+  availableTickets: number
+}
 
 export default function EventsPage() {
-  const [events] = useState([
+  const [events] = useState<Event[]>([
     {
       id: '1',
       title: 'BIG Networking Mixer',
@@ -40,15 +52,15 @@ export default function EventsPage() {
     }
   ])
 
-  const [selectedEvent, setSelectedEvent] = useState(null)
+  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null)
   const [ticketQuantity, setTicketQuantity] = useState(1)
 
-  const handlePurchaseTicket = (eventId) => {
+  const handlePurchaseTicket = (eventId: string) => {
     // TODO: Implement ticket purchase
     alert(`Purchasing ${ticketQuantity} ticket(s) for event ${eventId}`)
   }
 
-  const formatDate = (dateString) => {
+  const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       weekday: 'long',
       year: 'numeric',
@@ -113,7 +125,7 @@ export default function EventsPage() {
 
                 {/* Purchase Button */}
                 <button
-                  onClick={() => handlePurchaseTicket(event.id)}
+                  onClick={() => setSelectedEvent(event)}
                   disabled={event.availableTickets === 0}
                   className="w-full bg-blue-900 text-white py-2 px-4 rounded-lg hover:bg-blue-800 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
                 >
