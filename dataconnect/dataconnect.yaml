@@ -1,0 +1,12 @@
+specVersion: "v1"
+serviceId: "business-in-the-game"
+location: "us-central1"
+schema:
+  source: "./schema"
+  datasource:
+    postgresql:
+      database: "fdcdb"
+      cloudSql:
+        instanceId: "business-in-the-game-fdc"
+      # schemaValidation: "COMPATIBLE"
+connectorDirs: ["./connector"]
