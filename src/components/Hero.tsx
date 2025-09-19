@@ -32,23 +32,25 @@ export default function Hero() {
         </div>
       </div>
 
-      {/* Learn the game section */}
-      <div className="bg-gray-50 py-20">
+      {/* Learn the game section - Dark blue background */}
+      <div className="bg-blue-900 py-20">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="text-center">
-            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-blue-900 mb-8">
-              Learn the game{' '}
-              <span className="text-gray-600">on and off the field</span>
+            <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-4 tracking-tight">
+              LEARN THE GAME
             </h2>
+            <h3 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-300 mb-8 tracking-tight">
+              ON AND OFF THE FIELD
+            </h3>
             
-            <p className="text-lg md:text-xl text-gray-600 mb-8 max-w-4xl mx-auto">
+            <p className="text-lg md:text-xl text-white mb-8 max-w-4xl mx-auto">
               The membership community for athletes, entrepreneurs, creators, and investors. 
               Experience unparalleled networking through our curated events.
             </p>
 
-            <div className="text-center">
-              <h3 className="text-xl font-semibold text-blue-900 mb-4">Our Vision</h3>
-            </div>
+            <button className="bg-white text-blue-900 px-8 py-4 text-lg font-semibold rounded-lg hover:bg-gray-100 transition-colors">
+              Our Vision
+            </button>
           </div>
         </div>
       </div>
