@@ -10,22 +10,22 @@ export default function Hero() {
         />
       </div>
 
-      {/* Text Section - Match exact font style, size and color */}
-      <div className="bg-white py-20">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      {/* Text Section - Match exact reference styling */}
+      <div className="bg-white py-24">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
           <div className="text-center">
             {/* Main heading - Match exact styling */}
-            <h1 className="hero-text hero-text-medium text-blue-900 mb-2">
+            <h1 className="hero-text hero-text-medium text-blue-900 mb-4">
               THE COMMUNITY WHERE
             </h1>
             
             {/* Sub heading - Match exact styling */}
-            <h2 className="hero-text hero-text-large text-blue-900 mb-12">
+            <h2 className="hero-text hero-text-large text-blue-900 mb-16">
               MULTI—HYPHENATES CONNECT
             </h2>
             
             {/* CTA Button - Match exact styling */}
-            <button className="bg-blue-300 hover:bg-blue-400 text-blue-900 px-10 py-4 text-xl font-semibold rounded-lg transition-colors shadow-lg">
+            <button className="bg-blue-300 hover:bg-blue-400 text-blue-900 px-12 py-5 text-2xl font-bold rounded-lg transition-colors shadow-lg">
               Explore Membership
             </button>
           </div>
