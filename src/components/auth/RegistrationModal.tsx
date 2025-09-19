@@ -42,8 +42,9 @@ export default function RegistrationModal({ isOpen, onClose }: RegistrationModal
     try {
       await signUp(formData.email, formData.password, formData.name, formData.bio)
       setSuccess(true)
-    } catch (error: any) {
-      setError(error.message || 'Failed to create account')
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create account'
+      setError(errorMessage)
     } finally {
       setLoading(false)
     }
@@ -66,7 +67,7 @@ export default function RegistrationModal({ isOpen, onClose }: RegistrationModal
           <h3 className="text-2xl font-bold text-gray-900 mb-4">Registration Successful!</h3>
           <p className="text-gray-600 mb-6">
             Your account has been created and is pending admin approval. 
-            You'll receive an email once your membership is approved.
+            You&apos;ll receive an email once your membership is approved.
           </p>
           <button
             onClick={onClose}
