@@ -1,25 +1,26 @@
 export default function Hero() {
   return (
     <div className="bg-white">
-      {/* Hero Image Section - Full height with proper aspect ratio */}
+      {/* Hero Image Section - Full height with just the image */}
       <div className="relative h-screen w-full">
-        {/* Use simpler path */}
         <img
           src="/hero-image.webp"
           alt="BIG Center Stage Hero - Locker Room"
           className="w-full h-full object-cover object-center"
         />
-        
-        {/* Text Overlay - Positioned exactly like the reference */}
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="text-center text-white px-4 max-w-6xl">
+      </div>
+
+      {/* Text Section - Below the hero image */}
+      <div className="bg-white py-20">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="text-center">
             {/* Main heading - "THE COMMUNITY WHERE" */}
-            <h1 className="text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold mb-4 tracking-tight">
+            <h1 className="text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold mb-4 tracking-tight text-blue-900">
               THE COMMUNITY WHERE
             </h1>
             
             {/* Sub heading - "MULTI—HYPHENATES CONNECT" */}
-            <h2 className="text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-bold mb-12 tracking-tight">
+            <h2 className="text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-bold mb-12 tracking-tight text-blue-900">
               MULTI—HYPHENATES CONNECT
             </h2>
             
