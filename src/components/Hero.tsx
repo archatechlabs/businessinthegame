@@ -10,7 +10,7 @@ export default function Hero() {
         />
       </div>
 
-      {/* Text Section - Below the hero image */}
+      {/* Text Section - Clean white background with centered text */}
       <div className="bg-white py-20">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="text-center">
@@ -24,8 +24,8 @@ export default function Hero() {
               MULTI—HYPHENATES CONNECT
             </h2>
             
-            {/* CTA Button - Light blue like in reference */}
-            <button className="bg-blue-500 hover:bg-blue-600 text-white px-8 py-4 text-lg font-medium rounded-lg transition-colors shadow-lg">
+            {/* CTA Button - Light blue with dark blue text */}
+            <button className="bg-blue-300 hover:bg-blue-400 text-blue-900 px-8 py-4 text-lg font-medium rounded-lg transition-colors shadow-lg">
               Explore Membership
             </button>
           </div>
