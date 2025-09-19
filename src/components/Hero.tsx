@@ -3,26 +3,32 @@ import Image from 'next/image'
 export default function Hero() {
   return (
     <div className="bg-white">
-      {/* Hero Image Section */}
-      <div className="relative h-[70vh] min-h-[500px]">
+      {/* Hero Image Section - Full height with proper aspect ratio */}
+      <div className="relative h-screen w-full">
         <Image
           src="/Images/663c7a22e233c27b7722622e_big-center_stage-hero__feature.webp"
-          alt="BIG Center Stage Hero"
+          alt="BIG Center Stage Hero - Locker Room"
           fill
-          className="object-cover"
+          className="object-cover object-center"
           priority
+          quality={90}
         />
         
-        {/* Text Overlay */}
-        <div className="absolute inset-0 bg-black bg-opacity-20 flex items-center justify-center">
-          <div className="text-center text-white px-4">
-            <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-4">
+        {/* Text Overlay - Positioned exactly like the reference */}
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="text-center text-white px-4 max-w-6xl">
+            {/* Main heading - "THE COMMUNITY WHERE" */}
+            <h1 className="text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold mb-4 tracking-tight">
               THE COMMUNITY WHERE
             </h1>
-            <h2 className="text-5xl md:text-7xl lg:text-8xl font-bold mb-8">
+            
+            {/* Sub heading - "MULTI—HYPHENATES CONNECT" */}
+            <h2 className="text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-bold mb-12 tracking-tight">
               MULTI—HYPHENATES CONNECT
             </h2>
-            <button className="bg-blue-500 hover:bg-blue-600 text-white px-8 py-4 text-lg font-medium transition-colors">
+            
+            {/* CTA Button - Light blue like in reference */}
+            <button className="bg-blue-500 hover:bg-blue-600 text-white px-8 py-4 text-lg font-medium rounded-lg transition-colors shadow-lg">
               Explore Membership
             </button>
           </div>
