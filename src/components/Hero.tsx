@@ -5,13 +5,11 @@ export default function Hero() {
     <div className="bg-white">
       {/* Hero Image Section - Full height with proper aspect ratio */}
       <div className="relative h-screen w-full">
-        <Image
-          src="/Images/663c7a22e233c27b7722622e_big-center_stage-hero__feature.webp"
+        {/* Use simpler path */}
+        <img
+          src="/hero-image.webp"
           alt="BIG Center Stage Hero - Locker Room"
-          fill
-          className="object-cover object-center"
-          priority
-          quality={90}
+          className="w-full h-full object-cover object-center"
         />
         
         {/* Text Overlay - Positioned exactly like the reference */}
