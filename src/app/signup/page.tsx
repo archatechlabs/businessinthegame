@@ -41,7 +41,7 @@ export default function SignupPage() {
   // Redirect if already logged in
   useEffect(() => {
     if (user) {
-      router.push('/')
+      router.push('/dashboard')
     }
   }, [user, router])
 
@@ -166,6 +166,11 @@ export default function SignupPage() {
     try {
       await signUp(formData.email, formData.password, formData.name, formData.bio)
       setSuccess(true)
+      
+      // Redirect to dashboard after 2 seconds
+      setTimeout(() => {
+        router.push('/dashboard')
+      }, 2000)
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to create account'
       setErrors({ general: errorMessage })
@@ -183,14 +188,9 @@ export default function SignupPage() {
             <h2 className="text-3xl font-bold text-gray-900 mb-4">Registration Successful!</h2>
             <p className="text-gray-600 mb-8">
               Your account has been created and is pending admin approval. 
-              You&apos;ll receive an email once your membership is approved.
+              Redirecting you to your dashboard...
             </p>
-            <Link
-              href="/"
-              className="bg-blue-900 text-white px-6 py-3 rounded-lg hover:bg-blue-800 transition-colors"
-            >
-              Return to Home
-            </Link>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-900 mx-auto"></div>
           </div>
         </div>
       </div>
