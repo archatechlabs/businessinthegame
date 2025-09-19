@@ -6,6 +6,8 @@ import { Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline'
 import { useAuth } from '@/contexts/AuthContext'
 import RegistrationModal from './auth/RegistrationModal'
 import UserMenu from './user/UserMenu'
+import Image from 'next/image'
+import Link from 'next/link'
 
 const navigation = [
   { name: 'Events', href: '/events' },
@@ -17,21 +19,25 @@ const navigation = [
 export default function Navigation() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [isRegistrationOpen, setIsRegistrationOpen] = useState(false)
-  const { user, userProfile } = useAuth()
+  const { user } = useAuth()
 
   return (
     <header className="bg-blue-900">
       <nav className="mx-auto flex max-w-7xl items-center justify-between p-6 lg:px-8" aria-label="Global">
         <div className="flex lg:flex-1">
-          <a href="#" className="-m-1.5 p-1.5">
-            <span className="sr-only">BIC</span>
+          <Link href="/" className="-m-1.5 p-1.5">
+            <span className="sr-only">BIG</span>
             <div className="flex items-center">
-              <div className="h-8 w-8 bg-white rounded flex items-center justify-center">
-                <span className="text-blue-900 font-bold text-sm">BIC</span>
-              </div>
+              <Image
+                src="/Images/BIG Logo image.png"
+                alt="BIG Logo"
+                width={32}
+                height={32}
+                className="h-8 w-8"
+              />
               <span className="ml-2 text-white text-sm font-medium">BUSINESS INSIDE THE GAME</span>
             </div>
-          </a>
+          </Link>
         </div>
         <div className="flex lg:hidden">
           <button
@@ -45,18 +51,18 @@ export default function Navigation() {
         </div>
         <div className="hidden lg:flex lg:gap-x-12">
           {navigation.map((item) => (
-            <a key={item.name} href={item.href} className="text-sm font-semibold leading-6 text-white hover:text-blue-200">
+            <Link key={item.name} href={item.href} className="text-sm font-semibold leading-6 text-white hover:text-blue-200">
               {item.name}
-            </a>
+            </Link>
           ))}
         </div>
-        <div className="hidden lg:flex lg:flex-1 lg:justify-end lg:items-center lg:gap-4">
+        <div className="hidden lg:flex lg:flex-1 lg:justify-end lg:gap-x-6">
           {user ? (
             <UserMenu />
           ) : (
             <button
               onClick={() => setIsRegistrationOpen(true)}
-              className="rounded-md bg-transparent px-3.5 py-2 text-sm font-semibold text-white shadow-sm ring-1 ring-inset ring-white hover:bg-white hover:text-blue-900 transition-colors"
+              className="text-sm font-semibold leading-6 text-white border border-white px-4 py-2 rounded-md hover:bg-white hover:text-blue-900 transition-colors"
             >
               Membership
             </button>
@@ -67,15 +73,19 @@ export default function Navigation() {
         <div className="fixed inset-0 z-10" />
         <Dialog.Panel className="fixed inset-y-0 right-0 z-10 w-full overflow-y-auto bg-blue-900 px-6 py-6 sm:max-w-sm sm:ring-1 sm:ring-white/10">
           <div className="flex items-center justify-between">
-            <a href="#" className="-m-1.5 p-1.5">
-              <span className="sr-only">BIC</span>
+            <Link href="/" className="-m-1.5 p-1.5">
+              <span className="sr-only">BIG</span>
               <div className="flex items-center">
-                <div className="h-8 w-8 bg-white rounded flex items-center justify-center">
-                  <span className="text-blue-900 font-bold text-sm">BIC</span>
-                </div>
+                <Image
+                  src="/Images/BIG Logo image.png"
+                  alt="BIG Logo"
+                  width={32}
+                  height={32}
+                  className="h-8 w-8"
+                />
                 <span className="ml-2 text-white text-sm font-medium">BUSINESS INSIDE THE GAME</span>
               </div>
-            </a>
+            </Link>
             <button
               type="button"
               className="-m-2.5 rounded-md p-2.5 text-white"
@@ -89,52 +99,57 @@ export default function Navigation() {
             <div className="-my-6 divide-y divide-white/10">
               <div className="space-y-2 py-6">
                 {navigation.map((item) => (
-                  <a
+                  <Link
                     key={item.name}
                     href={item.href}
                     className="-mx-3 block rounded-lg px-3 py-2 text-base font-semibold leading-7 text-white hover:bg-white/10"
                   >
                     {item.name}
-                  </a>
+                  </Link>
                 ))}
               </div>
               <div className="py-6">
                 {user ? (
                   <div className="space-y-2">
-                    <div className="px-3 py-2">
-                      <p className="text-sm text-white font-medium">{userProfile?.name || user.displayName || 'User'}</p>
-                      <p className="text-xs text-blue-200">{user.email}</p>
-                    </div>
-                    <a
+                    <Link
                       href="/profile"
                       className="-mx-3 block rounded-lg px-3 py-2 text-base font-semibold leading-7 text-white hover:bg-white/10"
                     >
                       Profile
-                    </a>
-                    <a
+                    </Link>
+                    <Link
                       href="/tickets"
                       className="-mx-3 block rounded-lg px-3 py-2 text-base font-semibold leading-7 text-white hover:bg-white/10"
                     >
-                      My Tickets
-                    </a>
-                    <a
+                      Tickets
+                    </Link>
+                    <Link
                       href="/inbox"
                       className="-mx-3 block rounded-lg px-3 py-2 text-base font-semibold leading-7 text-white hover:bg-white/10"
                     >
                       Inbox
-                    </a>
-                    <a
+                    </Link>
+                    <Link
                       href="/friends"
                       className="-mx-3 block rounded-lg px-3 py-2 text-base font-semibold leading-7 text-white hover:bg-white/10"
                     >
                       Friends
-                    </a>
-                    <a
+                    </Link>
+                    <Link
                       href="/settings"
                       className="-mx-3 block rounded-lg px-3 py-2 text-base font-semibold leading-7 text-white hover:bg-white/10"
                     >
                       Settings
-                    </a>
+                    </Link>
+                    <button
+                      onClick={() => {
+                        // Handle logout
+                        setMobileMenuOpen(false)
+                      }}
+                      className="-mx-3 block rounded-lg px-3 py-2 text-base font-semibold leading-7 text-white hover:bg-white/10 w-full text-left"
+                    >
+                      Logout
+                    </button>
                   </div>
                 ) : (
                   <button
@@ -142,7 +157,7 @@ export default function Navigation() {
                       setIsRegistrationOpen(true)
                       setMobileMenuOpen(false)
                     }}
-                    className="-mx-3 block rounded-lg px-3 py-2 text-base font-semibold leading-7 text-white hover:bg-white/10"
+                    className="-mx-3 block rounded-lg px-3 py-2 text-base font-semibold leading-7 text-white border border-white hover:bg-white hover:text-blue-900 transition-colors"
                   >
                     Membership
                   </button>
@@ -153,9 +168,9 @@ export default function Navigation() {
         </Dialog.Panel>
       </Dialog>
 
-      <RegistrationModal 
-        isOpen={isRegistrationOpen} 
-        onClose={() => setIsRegistrationOpen(false)} 
+      <RegistrationModal
+        isOpen={isRegistrationOpen}
+        onClose={() => setIsRegistrationOpen(false)}
       />
     </header>
   )

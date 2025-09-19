@@ -1,3 +1,5 @@
+import Image from 'next/image'
+
 export default function Footer() {
   const footerLinks = [
     { name: 'Inquire', href: '#inquire' },
@@ -13,7 +15,16 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           {/* Logo and description */}
           <div>
-            <h3 className="text-2xl font-bold mb-4">BIG</h3>
+            <div className="flex items-center mb-4">
+              <Image
+                src="/Images/BIG Logo image.png"
+                alt="BIG Logo"
+                width={40}
+                height={40}
+                className="h-10 w-10 mr-3"
+              />
+              <h3 className="text-2xl font-bold">BIG</h3>
+            </div>
             <p className="text-gray-300 mb-6">
               The community where multi-hyphenates connect, collaborate, and thrive.
             </p>

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { EyeIcon, EyeSlashIcon, CheckIcon, ArrowLeftIcon } from '@heroicons/react/24/outline'
 import { useAuth } from '@/contexts/AuthContext'
 import Link from 'next/link'
+import Image from 'next/image'
 
 interface FormErrors {
   name?: string
@@ -49,131 +50,105 @@ export default function SignupPage() {
   const calculatePasswordStrength = (password: string): PasswordStrength => {
     let score = 0
     let feedback = ''
-    
+    let color = ''
+
     if (password.length >= 8) score += 1
-    if (password.length >= 12) score += 1
     if (/[a-z]/.test(password)) score += 1
     if (/[A-Z]/.test(password)) score += 1
     if (/[0-9]/.test(password)) score += 1
     if (/[^A-Za-z0-9]/.test(password)) score += 1
 
     if (score <= 2) {
-      feedback = 'Weak password'
-      return { score, feedback, color: 'text-red-500' }
+      feedback = 'Weak'
+      color = 'text-red-500'
+    } else if (score <= 3) {
+      feedback = 'Fair'
+      color = 'text-yellow-500'
     } else if (score <= 4) {
-      feedback = 'Medium strength'
-      return { score, feedback, color: 'text-yellow-500' }
+      feedback = 'Good'
+      color = 'text-blue-500'
     } else {
-      feedback = 'Strong password'
-      return { score, feedback, color: 'text-green-500' }
+      feedback = 'Strong'
+      color = 'text-green-500'
     }
-  }
 
-  // Real-time validation
-  const validateField = (name: string, value: string) => {
-    const newErrors = { ...errors }
-    
-    switch (name) {
-      case 'name':
-        if (!value.trim()) {
-          newErrors.name = 'Name is required'
-        } else if (value.trim().length < 2) {
-          newErrors.name = 'Name must be at least 2 characters'
-        } else {
-          delete newErrors.name
-        }
-        break
-      
-      case 'email':
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-        if (!value.trim()) {
-          newErrors.email = 'Email is required'
-        } else if (!emailRegex.test(value)) {
-          newErrors.email = 'Please enter a valid email address'
-        } else {
-          delete newErrors.email
-        }
-        break
-      
-      case 'password':
-        if (!value) {
-          newErrors.password = 'Password is required'
-        } else if (value.length < 6) {
-          newErrors.password = 'Password must be at least 6 characters'
-        } else {
-          delete newErrors.password
-        }
-        setPasswordStrength(calculatePasswordStrength(value))
-        break
-      
-      case 'confirmPassword':
-        if (!value) {
-          newErrors.confirmPassword = 'Please confirm your password'
-        } else if (value !== formData.password) {
-          newErrors.confirmPassword = 'Passwords do not match'
-        } else {
-          delete newErrors.confirmPassword
-        }
-        break
-    }
-    
-    setErrors(newErrors)
+    return { score, feedback, color }
   }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target
     const checked = (e.target as HTMLInputElement).checked
-    
+
     setFormData(prev => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : value
     }))
 
-    // Real-time validation
-    if (name !== 'bio' && name !== 'termsAccepted') {
-      validateField(name, value)
+    // Clear specific error when user starts typing
+    if (errors[name as keyof FormErrors]) {
+      setErrors(prev => ({
+        ...prev,
+        [name]: undefined
+      }))
     }
+
+    // Calculate password strength
+    if (name === 'password') {
+      setPasswordStrength(calculatePasswordStrength(value))
+    }
+  }
+
+  const validateForm = (): boolean => {
+    const newErrors: FormErrors = {}
+
+    if (!formData.name.trim()) {
+      newErrors.name = 'Name is required'
+    }
+
+    if (!formData.email.trim()) {
+      newErrors.email = 'Email is required'
+    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+      newErrors.email = 'Email is invalid'
+    }
+
+    if (!formData.password) {
+      newErrors.password = 'Password is required'
+    } else if (formData.password.length < 8) {
+      newErrors.password = 'Password must be at least 8 characters'
+    }
+
+    if (!formData.confirmPassword) {
+      newErrors.confirmPassword = 'Please confirm your password'
+    } else if (formData.password !== formData.confirmPassword) {
+      newErrors.confirmPassword = 'Passwords do not match'
+    }
+
+    if (!formData.termsAccepted) {
+      newErrors.general = 'You must accept the terms and conditions'
+    }
+
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setLoading(true)
-    setErrors({})
-
-    // Final validation
-    const newErrors: FormErrors = {}
     
-    if (!formData.name.trim()) newErrors.name = 'Name is required'
-    if (!formData.email.trim()) newErrors.email = 'Email is required'
-    if (!formData.password) newErrors.password = 'Password is required'
-    if (!formData.confirmPassword) newErrors.confirmPassword = 'Please confirm your password'
-    if (!formData.termsAccepted) newErrors.general = 'You must accept the terms and conditions'
-    
-    if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = 'Passwords do not match'
-    }
-    
-    if (formData.password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters'
-    }
-
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors)
-      setLoading(false)
+    if (!validateForm()) {
       return
     }
+
+    setLoading(true)
+    setErrors({})
 
     try {
       await signUp(formData.email, formData.password, formData.name, formData.bio)
       setSuccess(true)
-      
-      // Redirect to dashboard after 2 seconds
-      setTimeout(() => {
-        router.push('/dashboard')
-      }, 2000)
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to create account'
-      setErrors({ general: errorMessage })
+      console.error('Signup error:', error)
+      setErrors({
+        general: error instanceof Error ? error.message : 'An error occurred during signup. Please try again.'
+      })
     } finally {
       setLoading(false)
     }
@@ -182,15 +157,19 @@ export default function SignupPage() {
   if (success) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-md w-full space-y-8">
-          <div className="text-center">
-            <div className="text-green-600 text-6xl mb-4">✓</div>
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">Registration Successful!</h2>
-            <p className="text-gray-600 mb-8">
-              Your account has been created and is pending admin approval. 
-              Redirecting you to your dashboard...
+        <div className="max-w-md w-full space-y-8 text-center">
+          <div className="bg-green-50 border border-green-200 rounded-lg p-6">
+            <CheckIcon className="h-12 w-12 text-green-600 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-green-800 mb-2">Account Created Successfully!</h2>
+            <p className="text-green-700 mb-4">
+              Your account has been created and is pending admin approval. You&apos;ll receive an email once your account is approved.
             </p>
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-900 mx-auto"></div>
+            <Link
+              href="/"
+              className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
+            >
+              Return to Home
+            </Link>
           </div>
         </div>
       </div>
@@ -208,10 +187,23 @@ export default function SignupPage() {
             <ArrowLeftIcon className="h-4 w-4 mr-2" />
             Back to Home
           </Link>
-          <h2 className="text-3xl font-bold text-gray-900 text-center">Join BIG</h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
-            Create your account to join the community
-          </p>
+          
+          {/* Logo and Header */}
+          <div className="text-center mb-6">
+            <div className="flex items-center justify-center mb-4">
+              <Image
+                src="/Images/BIG Logo image.png"
+                alt="BIG Logo"
+                width={48}
+                height={48}
+                className="h-12 w-12"
+              />
+            </div>
+            <h2 className="text-3xl font-bold text-gray-900">Join BIG</h2>
+            <p className="mt-2 text-center text-sm text-gray-600">
+              Create your account to join the community
+            </p>
+          </div>
         </div>
 
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
@@ -277,8 +269,8 @@ export default function SignupPage() {
                 />
                 <button
                   type="button"
-                  onClick={() => setShowPassword(!showPassword)}
                   className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                  onClick={() => setShowPassword(!showPassword)}
                 >
                   {showPassword ? (
                     <EyeSlashIcon className="h-5 w-5 text-gray-400" />
@@ -289,17 +281,18 @@ export default function SignupPage() {
               </div>
               {formData.password && (
                 <div className="mt-1">
-                  <div className="flex items-center space-x-2">
+                  <div className="flex items-center">
                     <div className="flex-1 bg-gray-200 rounded-full h-2">
-                      <div 
+                      <div
                         className={`h-2 rounded-full transition-all duration-300 ${
                           passwordStrength.score <= 2 ? 'bg-red-500' :
-                          passwordStrength.score <= 4 ? 'bg-yellow-500' : 'bg-green-500'
+                          passwordStrength.score <= 3 ? 'bg-yellow-500' :
+                          passwordStrength.score <= 4 ? 'bg-blue-500' : 'bg-green-500'
                         }`}
-                        style={{ width: `${(passwordStrength.score / 6) * 100}%` }}
+                        style={{ width: `${(passwordStrength.score / 5) * 100}%` }}
                       />
                     </div>
-                    <span className={`text-sm ${passwordStrength.color}`}>
+                    <span className={`ml-2 text-sm font-medium ${passwordStrength.color}`}>
                       {passwordStrength.feedback}
                     </span>
                   </div>
@@ -329,8 +322,8 @@ export default function SignupPage() {
                 />
                 <button
                   type="button"
-                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                   className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                 >
                   {showConfirmPassword ? (
                     <EyeSlashIcon className="h-5 w-5 text-gray-400" />
@@ -339,12 +332,6 @@ export default function SignupPage() {
                   )}
                 </button>
               </div>
-              {formData.confirmPassword && formData.password === formData.confirmPassword && (
-                <div className="flex items-center space-x-1 mt-1">
-                  <CheckIcon className="h-4 w-4 text-green-500" />
-                  <span className="text-green-500 text-sm">Passwords match</span>
-                </div>
-              )}
               {errors.confirmPassword && (
                 <p className="text-red-500 text-sm mt-1">{errors.confirmPassword}</p>
               )}
@@ -366,48 +353,49 @@ export default function SignupPage() {
             </div>
 
             {/* Terms and Conditions */}
-            <div className="flex items-start space-x-2">
-              <input
-                type="checkbox"
-                name="termsAccepted"
-                checked={formData.termsAccepted}
-                onChange={handleChange}
-                className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-              />
-              <label className="text-sm text-gray-600">
-                I agree to the{' '}
-                <a href="#" className="text-blue-600 hover:text-blue-800 underline">
-                  Terms of Service
-                </a>{' '}
-                and{' '}
-                <a href="#" className="text-blue-600 hover:text-blue-800 underline">
-                  Privacy Policy
-                </a>
-              </label>
+            <div className="flex items-start">
+              <div className="flex items-center h-5">
+                <input
+                  id="terms"
+                  name="termsAccepted"
+                  type="checkbox"
+                  checked={formData.termsAccepted}
+                  onChange={handleChange}
+                  className="focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300 rounded"
+                />
+              </div>
+              <div className="ml-3 text-sm">
+                <label htmlFor="terms" className="text-gray-700">
+                  I agree to the{' '}
+                  <a href="/terms" className="text-blue-600 hover:text-blue-800">
+                    Terms and Conditions
+                  </a>{' '}
+                  and{' '}
+                  <a href="/privacy" className="text-blue-600 hover:text-blue-800">
+                    Privacy Policy
+                  </a>
+                </label>
+              </div>
             </div>
           </div>
 
-          {/* General Error */}
+          {/* Error Message */}
           {errors.general && (
-            <div className="text-red-600 text-sm bg-red-50 p-3 rounded-lg">
-              {errors.general}
+            <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+              <p className="text-red-600 text-sm">{errors.general}</p>
             </div>
           )}
 
           {/* Submit Button */}
-          <div>
-            <button
-              type="submit"
-              disabled={loading || !formData.termsAccepted}
-              className="w-full bg-blue-900 text-white py-3 px-4 rounded-lg hover:bg-blue-800 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex items-center justify-center space-x-2"
-            >
-              {loading && (
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-              )}
-              <span>{loading ? 'Creating Account...' : 'Create Account'}</span>
-            </button>
-          </div>
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {loading ? 'Creating Account...' : 'Create Account'}
+          </button>
 
+          {/* Login Link */}
           <div className="text-center">
             <p className="text-sm text-gray-600">
               Already have an account?{' '}
