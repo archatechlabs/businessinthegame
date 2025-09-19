@@ -1,4 +1,11 @@
+'use client'
+
+import { useState } from 'react'
+import RegistrationModal from '@/components/auth/RegistrationModal'
+
 export default function Hero() {
+  const [isRegistrationOpen, setIsRegistrationOpen] = useState(false)
+
   return (
     <div className="bg-white">
       {/* Hero Image Section - Full height with just the image */}
@@ -24,8 +31,11 @@ export default function Hero() {
               MULTI—HYPHENATES CONNECT
             </h2>
             
-            {/* CTA Button - Match exact styling */}
-            <button className="bg-blue-300 hover:bg-blue-400 text-blue-900 px-12 py-5 text-2xl font-bold rounded-lg transition-colors shadow-lg">
+            {/* CTA Button - Now opens registration modal */}
+            <button 
+              onClick={() => setIsRegistrationOpen(true)}
+              className="bg-blue-300 hover:bg-blue-400 text-blue-900 px-12 py-5 text-2xl font-bold rounded-lg transition-colors shadow-lg"
+            >
               Explore Membership
             </button>
           </div>
@@ -48,12 +58,21 @@ export default function Hero() {
               Experience unparalleled networking through our curated events.
             </p>
 
-            <button className="bg-white text-blue-900 px-8 py-4 text-lg font-semibold rounded-lg hover:bg-gray-100 transition-colors">
+            <button 
+              onClick={() => setIsRegistrationOpen(true)}
+              className="bg-white text-blue-900 px-8 py-4 text-lg font-semibold rounded-lg hover:bg-gray-100 transition-colors"
+            >
               Our Vision
             </button>
           </div>
         </div>
       </div>
+
+      {/* Registration Modal */}
+      <RegistrationModal 
+        isOpen={isRegistrationOpen} 
+        onClose={() => setIsRegistrationOpen(false)} 
+      />
     </div>
   )
 }

@@ -1,11 +1,13 @@
 'use client'
 
 import { useState } from 'react'
-import { Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline'
+import { Bars3Icon, XMarkIcon, UserIcon } from '@heroicons/react/24/outline'
 import Link from 'next/link'
+import { useAuth } from '@/contexts/AuthContext'
 
 export default function Navigation() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const { user, userProfile, logout, isAdmin, isApproved } = useAuth()
 
   const navigation = [
     { name: 'Events', href: '/events' },
@@ -50,21 +52,50 @@ export default function Navigation() {
 
           {/* Right side buttons */}
           <div className="hidden md:flex md:items-center md:space-x-4">
-            <Link
-              href="/profile"
-              className="text-white hover:text-blue-200 text-sm font-medium"
-            >
-              Profile
-            </Link>
-            <Link
-              href="/tickets"
-              className="text-white hover:text-blue-200 text-sm font-medium"
-            >
-              My Tickets
-            </Link>
-            <button className="bg-blue-900 border-2 border-white text-white px-6 py-2 text-sm font-medium hover:bg-blue-800 transition-colors">
-              Membership
-            </button>
+            {user ? (
+              <>
+                {isAdmin && (
+                  <Link
+                    href="/admin"
+                    className="text-white hover:text-blue-200 text-sm font-medium"
+                  >
+                    Admin
+                  </Link>
+                )}
+                {isApproved && (
+                  <>
+                    <Link
+                      href="/profile"
+                      className="text-white hover:text-blue-200 text-sm font-medium"
+                    >
+                      Profile
+                    </Link>
+                    <Link
+                      href="/tickets"
+                      className="text-white hover:text-blue-200 text-sm font-medium"
+                    >
+                      My Tickets
+                    </Link>
+                  </>
+                )}
+                <div className="flex items-center space-x-2">
+                  <UserIcon className="h-5 w-5 text-white" />
+                  <span className="text-white text-sm">
+                    {userProfile?.name || user.email}
+                  </span>
+                </div>
+                <button
+                  onClick={logout}
+                  className="text-white hover:text-blue-200 text-sm font-medium"
+                >
+                  Logout
+                </button>
+              </>
+            ) : (
+              <button className="bg-blue-900 border-2 border-white text-white px-6 py-2 text-sm font-medium hover:bg-blue-800 transition-colors">
+                Membership
+              </button>
+            )}
           </div>
 
           {/* Mobile menu button */}
@@ -100,23 +131,50 @@ export default function Navigation() {
               </Link>
             ))}
             <div className="pt-4 space-y-2">
-              <Link
-                href="/profile"
-                className="text-white hover:text-blue-200 block px-3 py-2 text-base font-medium"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                Profile
-              </Link>
-              <Link
-                href="/tickets"
-                className="text-white hover:text-blue-200 block px-3 py-2 text-base font-medium"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                My Tickets
-              </Link>
-              <button className="w-full bg-blue-900 border-2 border-white text-white px-6 py-2 text-sm font-medium hover:bg-blue-800 transition-colors">
-                Membership
-              </button>
+              {user ? (
+                <>
+                  {isAdmin && (
+                    <Link
+                      href="/admin"
+                      className="text-white hover:text-blue-200 block px-3 py-2 text-base font-medium"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      Admin
+                    </Link>
+                  )}
+                  {isApproved && (
+                    <>
+                      <Link
+                        href="/profile"
+                        className="text-white hover:text-blue-200 block px-3 py-2 text-base font-medium"
+                        onClick={() => setMobileMenuOpen(false)}
+                      >
+                        Profile
+                      </Link>
+                      <Link
+                        href="/tickets"
+                        className="text-white hover:text-blue-200 block px-3 py-2 text-base font-medium"
+                        onClick={() => setMobileMenuOpen(false)}
+                      >
+                        My Tickets
+                      </Link>
+                    </>
+                  )}
+                  <button
+                    onClick={() => {
+                      logout()
+                      setMobileMenuOpen(false)
+                    }}
+                    className="text-white hover:text-blue-200 block px-3 py-2 text-base font-medium w-full text-left"
+                  >
+                    Logout
+                  </button>
+                </>
+              ) : (
+                <button className="w-full bg-blue-900 border-2 border-white text-white px-6 py-2 text-sm font-medium hover:bg-blue-800 transition-colors">
+                  Membership
+                </button>
+              )}
             </div>
           </div>
         </div>
