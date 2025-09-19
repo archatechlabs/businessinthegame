@@ -21,7 +21,7 @@ export default function Membership() {
     <div className="bg-white py-20" id="membership">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-16">
-          <h2 className="text-3xl md:text-4xl font-bold text-black mb-4">
+          <h2 className="text-3xl md:text-4xl font-bold text-blue-900 mb-4">
             BIG membership
           </h2>
         </div>
@@ -32,10 +32,10 @@ export default function Membership() {
               <div className="text-6xl mb-4 group-hover:scale-110 transition-transform">
                 {feature.icon}
               </div>
-              <h3 className="text-xl font-semibold text-black mb-2">
+              <h3 className="text-xl font-semibold text-blue-900 mb-2">
                 {feature.title}
               </h3>
-              <p className="text-gray-600 hover:text-black transition-colors">
+              <p className="text-gray-600 hover:text-blue-900 transition-colors">
                 {feature.description}
               </p>
             </div>

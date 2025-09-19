@@ -1,31 +1,31 @@
+import Image from 'next/image'
+
 export default function Hero() {
   return (
     <div className="bg-white">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-20">
-        <div className="text-center">
-          {/* Main heading */}
-          <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold text-black mb-8">
-            BIG is the stage for{' '}
-            <span className="text-gray-600">multi-hyphenates</span>
-          </h1>
-
-          {/* Subheading with Connect, Collaborate, Thrive */}
-          <div className="text-2xl md:text-3xl lg:text-4xl font-light text-gray-700 mb-12">
-            <div className="space-y-2">
-              <div>The community where</div>
-              <div className="font-bold text-black">multi—hyphenates</div>
-              <div className="space-x-8">
-                <span className="inline-block">Connect</span>
-                <span className="inline-block">Collaborate</span>
-                <span className="inline-block">Thrive</span>
-              </div>
-            </div>
+      {/* Hero Image Section */}
+      <div className="relative h-[70vh] min-h-[500px]">
+        <Image
+          src="/Images/663c7a22e233c27b7722622e_big-center_stage-hero__feature.webp"
+          alt="BIG Center Stage Hero"
+          fill
+          className="object-cover"
+          priority
+        />
+        
+        {/* Text Overlay */}
+        <div className="absolute inset-0 bg-black bg-opacity-20 flex items-center justify-center">
+          <div className="text-center text-white px-4">
+            <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-4">
+              THE COMMUNITY WHERE
+            </h1>
+            <h2 className="text-5xl md:text-7xl lg:text-8xl font-bold mb-8">
+              MULTI—HYPHENATES CONNECT
+            </h2>
+            <button className="bg-blue-500 hover:bg-blue-600 text-white px-8 py-4 text-lg font-medium transition-colors">
+              Explore Membership
+            </button>
           </div>
-
-          {/* CTA Button */}
-          <button className="bg-black text-white px-8 py-4 rounded-full text-lg font-medium hover:bg-gray-800 transition-colors">
-            Explore Membership
-          </button>
         </div>
       </div>
 
@@ -33,7 +33,7 @@ export default function Hero() {
       <div className="bg-gray-50 py-20">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="text-center">
-            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-black mb-8">
+            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-blue-900 mb-8">
               Learn the game{' '}
               <span className="text-gray-600">on and off the field</span>
             </h2>
@@ -44,7 +44,7 @@ export default function Hero() {
             </p>
 
             <div className="text-center">
-              <h3 className="text-xl font-semibold text-black mb-4">Our Vision</h3>
+              <h3 className="text-xl font-semibold text-blue-900 mb-4">Our Vision</h3>
             </div>
           </div>
         </div>
