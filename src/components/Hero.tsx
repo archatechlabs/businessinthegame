@@ -10,22 +10,22 @@ export default function Hero() {
         />
       </div>
 
-      {/* Text Section - Clean white background with centered text */}
+      {/* Text Section - Match exact font style, size and color */}
       <div className="bg-white py-20">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="text-center">
-            {/* Main heading - "THE COMMUNITY WHERE" */}
-            <h1 className="text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold mb-4 tracking-tight text-blue-900">
+            {/* Main heading - Match exact styling */}
+            <h1 className="hero-text hero-text-medium text-blue-900 mb-2">
               THE COMMUNITY WHERE
             </h1>
             
-            {/* Sub heading - "MULTI—HYPHENATES CONNECT" */}
-            <h2 className="text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-bold mb-12 tracking-tight text-blue-900">
+            {/* Sub heading - Match exact styling */}
+            <h2 className="hero-text hero-text-large text-blue-900 mb-12">
               MULTI—HYPHENATES CONNECT
             </h2>
             
-            {/* CTA Button - Light blue with dark blue text */}
-            <button className="bg-blue-300 hover:bg-blue-400 text-blue-900 px-8 py-4 text-lg font-medium rounded-lg transition-colors shadow-lg">
+            {/* CTA Button - Match exact styling */}
+            <button className="bg-blue-300 hover:bg-blue-400 text-blue-900 px-10 py-4 text-xl font-semibold rounded-lg transition-colors shadow-lg">
               Explore Membership
             </button>
           </div>
