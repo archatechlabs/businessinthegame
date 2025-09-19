@@ -11,16 +11,26 @@ import {
 import { doc, setDoc, getDoc } from 'firebase/firestore'
 import { auth, db } from '@/lib/firebase'
 
+// Define user tiers that can be dynamically managed
+export type UserTier = 'member' | 'non-member' | 'premium' | 'vip' | 'founder'
+
+// Define role hierarchy
+export type UserRole = 'super-admin' | 'admin' | 'moderator' | 'user'
+
 interface UserProfile {
   uid: string
   email: string
   name: string
   bio?: string
   avatar?: string
-  role: 'pending' | 'member' | 'admin'
-  status: 'active' | 'inactive'
+  role: UserRole
+  tier: UserTier
+  status: 'active' | 'inactive' | 'suspended' | 'pending'
+  permissions: string[]
   createdAt: Date
   updatedAt: Date
+  lastLoginAt?: Date
+  createdBy?: string // For tracking who created the account
 }
 
 interface AuthContextType {
@@ -30,11 +40,60 @@ interface AuthContextType {
   signUp: (email: string, password: string, name: string, bio?: string) => Promise<void>
   signIn: (email: string, password: string) => Promise<void>
   logout: () => Promise<void>
+  
+  // Role checks
+  isSuperAdmin: boolean
   isAdmin: boolean
+  isModerator: boolean
+  isUser: boolean
+  
+  // Status checks
   isApproved: boolean
+  isActive: boolean
+  isPending: boolean
+  
+  // Permission checks
+  hasPermission: (permission: string) => boolean
+  canManageUsers: boolean
+  canModerateContent: boolean
+  canAccessAdminPanel: boolean
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
+
+// Define permissions for each role
+const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
+  'super-admin': [
+    'manage_users',
+    'manage_roles',
+    'manage_tiers',
+    'manage_system',
+    'access_admin_panel',
+    'moderate_content',
+    'manage_events',
+    'view_analytics',
+    'manage_billing',
+    'system_settings'
+  ],
+  'admin': [
+    'manage_users',
+    'access_admin_panel',
+    'moderate_content',
+    'manage_events',
+    'view_analytics',
+    'manage_billing'
+  ],
+  'moderator': [
+    'moderate_content',
+    'manage_events',
+    'view_analytics'
+  ],
+  'user': [
+    'view_content',
+    'create_content',
+    'manage_own_profile'
+  ]
+}
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
@@ -60,8 +119,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setUserProfile({
               ...profileData,
               createdAt: profileData.createdAt?.toDate(),
-              updatedAt: profileData.updatedAt?.toDate()
+              updatedAt: profileData.updatedAt?.toDate(),
+              lastLoginAt: profileData.lastLoginAt?.toDate()
             } as UserProfile)
+            
+            // Update last login time
+            await setDoc(doc(db, 'users', user.uid), {
+              lastLoginAt: new Date()
+            }, { merge: true })
           }
         } catch (error) {
           console.error('Error fetching user profile:', error)
@@ -91,8 +156,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         email: user.email!,
         name,
         bio,
-        role: 'pending',
-        status: 'active',
+        role: 'user',
+        tier: 'non-member',
+        status: 'pending',
+        permissions: ROLE_PERMISSIONS.user,
         createdAt: new Date(),
         updatedAt: new Date()
       }
@@ -139,8 +206,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  const isAdmin = userProfile?.role === 'admin'
-  const isApproved = userProfile?.role === 'member' || userProfile?.role === 'admin'
+  // Role checks
+  const isSuperAdmin = userProfile?.role === 'super-admin'
+  const isAdmin = userProfile?.role === 'admin' || isSuperAdmin
+  const isModerator = userProfile?.role === 'moderator' || isAdmin
+  const isUser = userProfile?.role === 'user' || isModerator
+
+  // Status checks
+  const isApproved = userProfile?.status === 'active'
+  const isActive = userProfile?.status === 'active'
+  const isPending = userProfile?.status === 'pending'
+
+  // Permission checks
+  const hasPermission = (permission: string): boolean => {
+    if (!userProfile) return false
+    return userProfile.permissions.includes(permission)
+  }
+
+  const canManageUsers = hasPermission('manage_users')
+  const canModerateContent = hasPermission('moderate_content')
+  const canAccessAdminPanel = hasPermission('access_admin_panel')
 
   const value = {
     user,
@@ -149,8 +234,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signUp,
     signIn,
     logout,
+    isSuperAdmin,
     isAdmin,
-    isApproved
+    isModerator,
+    isUser,
+    isApproved,
+    isActive,
+    isPending,
+    hasPermission,
+    canManageUsers,
+    canModerateContent,
+    canAccessAdminPanel
   }
 
   return (

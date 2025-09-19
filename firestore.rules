@@ -1,32 +1,59 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Allow users to read/write their own user document
+    // Helper function to get user role
+    function getUserRole(userId) {
+      return get(/databases/$(database)/documents/users/$(userId)).data.role;
+    }
+    
+    // Helper function to check if user is admin or higher
+    function isAdmin(userId) {
+      return getUserRole(userId) in ['admin', 'super-admin'];
+    }
+    
+    // Helper function to check if user is super admin
+    function isSuperAdmin(userId) {
+      return getUserRole(userId) == 'super-admin';
+    }
+    
+    // Helper function to check if user is moderator or higher
+    function isModerator(userId) {
+      return getUserRole(userId) in ['moderator', 'admin', 'super-admin'];
+    }
+
+    // Users collection - allow users to read/write their own document
     match /users/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
+      
+      // Allow admins to read all user documents
+      allow read: if request.auth != null && isAdmin(request.auth.uid);
+      
+      // Allow super admins to write to any user document
+      allow write: if request.auth != null && isSuperAdmin(request.auth.uid);
+      
+      // Allow admins to write to non-admin users
+      allow write: if request.auth != null && 
+        isAdmin(request.auth.uid) && 
+        getUserRole(userId) in ['user', 'moderator'];
     }
     
-    // Allow admins to read all user documents
-    match /users/{userId} {
-      allow read: if request.auth != null && 
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
-    }
-    
-    // Allow all authenticated users to read events
+    // Events collection - allow all authenticated users to read
     match /events/{eventId} {
       allow read: if request.auth != null;
+      
+      // Only admins and moderators can create/update/delete events
+      allow write: if request.auth != null && isModerator(request.auth.uid);
     }
     
-    // Allow users to read/write their own tickets
+    // Tickets collection - users can manage their own tickets
     match /tickets/{ticketId} {
       allow read, write: if request.auth != null && 
         request.auth.uid == resource.data.userId;
-    }
-    
-    // Allow users to create tickets
-    match /tickets/{ticketId} {
       allow create: if request.auth != null && 
         request.auth.uid == request.resource.data.userId;
+        
+      // Admins can read all tickets
+      allow read: if request.auth != null && isAdmin(request.auth.uid);
     }
 
     // Friends collection - allow users to manage their own friend relationships
@@ -69,6 +96,23 @@ service cloud.firestore {
         (request.auth.uid == resource.data.senderId || request.auth.uid == resource.data.receiverId);
       allow create: if request.auth != null && 
         request.auth.uid == request.resource.data.senderId;
+    }
+    
+    // System settings - only super admins can access
+    match /systemSettings/{settingId} {
+      allow read, write: if request.auth != null && isSuperAdmin(request.auth.uid);
+    }
+    
+    // Analytics - admins and moderators can read
+    match /analytics/{analyticsId} {
+      allow read: if request.auth != null && isModerator(request.auth.uid);
+      allow write: if request.auth != null && isAdmin(request.auth.uid);
+    }
+    
+    // Audit logs - only admins can read
+    match /auditLogs/{logId} {
+      allow read: if request.auth != null && isAdmin(request.auth.uid);
+      allow create: if request.auth != null; // Any authenticated user can create audit logs
     }
   }
 }
