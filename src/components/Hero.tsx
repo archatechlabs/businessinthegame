@@ -1,10 +1,24 @@
 'use client'
 
 import { useState } from 'react'
+import { useAuth } from '@/contexts/AuthContext'
+import { useRouter } from 'next/navigation'
 import RegistrationModal from '@/components/auth/RegistrationModal'
 
 export default function Hero() {
   const [isRegistrationOpen, setIsRegistrationOpen] = useState(false)
+  const { user } = useAuth()
+  const router = useRouter()
+
+  const handleSignIn = async () => {
+    if (user) {
+      // User is already signed in, redirect to dashboard
+      router.push('/dashboard')
+    } else {
+      // Open sign-in modal or redirect to sign-in page
+      router.push('/signin')
+    }
+  }
 
   return (
     <div className="bg-white">
@@ -31,13 +45,22 @@ export default function Hero() {
               MULTI—HYPHENATES CONNECT
             </h2>
             
-            {/* CTA Button - Now opens registration modal */}
-            <button 
-              onClick={() => setIsRegistrationOpen(true)}
-              className="bg-blue-300 hover:bg-blue-400 text-blue-900 px-12 py-5 text-2xl font-bold rounded-lg transition-colors shadow-lg"
-            >
-              Explore Membership
-            </button>
+            {/* CTA Buttons - Now includes both Sign In and Explore Membership */}
+            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+              <button 
+                onClick={handleSignIn}
+                className="bg-blue-900 hover:bg-blue-800 text-white px-12 py-5 text-2xl font-bold rounded-lg transition-colors shadow-lg border-2 border-blue-900"
+              >
+                {user ? 'Go to Dashboard' : 'Sign In'}
+              </button>
+              
+              <button 
+                onClick={() => setIsRegistrationOpen(true)}
+                className="bg-blue-300 hover:bg-blue-400 text-blue-900 px-12 py-5 text-2xl font-bold rounded-lg transition-colors shadow-lg border-2 border-blue-300"
+              >
+                Explore Membership
+              </button>
+            </div>
           </div>
         </div>
       </div>
