@@ -106,6 +106,17 @@ const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
   ]
 }
 
+// Helper function to remove undefined values from an object
+const removeUndefinedValues = (obj: any): any => {
+  const cleaned: any = {}
+  for (const key in obj) {
+    if (obj[key] !== undefined) {
+      cleaned[key] = obj[key]
+    }
+  }
+  return cleaned
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
@@ -167,7 +178,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         email: user.email!,
         name,
         username,
-        bio,
+        bio: bio || '', // Ensure bio is never undefined
         role: 'user',
         tier: 'non-member',
         status: 'pending',
@@ -177,11 +188,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         updatedAt: new Date()
       }
 
-      await setDoc(doc(db, 'users', user.uid), {
+      // Remove undefined values before saving to Firestore
+      const cleanedProfile = removeUndefinedValues({
         ...userProfile,
         createdAt: new Date(),
         updatedAt: new Date()
       })
+
+      await setDoc(doc(db, 'users', user.uid), cleanedProfile)
 
       setUserProfile(userProfile)
     } catch (error) {
