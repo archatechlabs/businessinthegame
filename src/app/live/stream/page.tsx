@@ -8,11 +8,9 @@ import {
   VideoCameraIcon, 
   StopIcon, 
   MicrophoneIcon,
-  MicrophoneSlashIcon,
-  VideoIcon,
-  VideoSlashIcon,
   UserGroupIcon,
-  SettingsIcon
+  Cog6ToothIcon,
+  XMarkIcon
 } from '@heroicons/react/24/outline'
 import { canUserStream, getStreamingTier, getStreamQuality, generateChannelName, generateUID } from '@/utils/agora'
 
@@ -202,11 +200,7 @@ export default function StreamPage() {
                             isMuted ? 'bg-red-600 text-white' : 'bg-white text-gray-900'
                           }`}
                         >
-                          {isMuted ? (
-                            <MicrophoneSlashIcon className="h-5 w-5" />
-                          ) : (
-                            <MicrophoneIcon className="h-5 w-5" />
-                          )}
+                          <MicrophoneIcon className="h-5 w-5" />
                         </button>
                         
                         <button
@@ -216,9 +210,9 @@ export default function StreamPage() {
                           }`}
                         >
                           {isVideoEnabled ? (
-                            <VideoIcon className="h-5 w-5" />
+                            <VideoCameraIcon className="h-5 w-5" />
                           ) : (
-                            <VideoSlashIcon className="h-5 w-5" />
+                            <XMarkIcon className="h-5 w-5" />
                           )}
                         </button>
                       </div>
@@ -311,7 +305,7 @@ export default function StreamPage() {
             {/* Stream Quality */}
             <div className="bg-white rounded-lg shadow-md p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                <SettingsIcon className="h-5 w-5 mr-2" />
+                <Cog6ToothIcon className="h-5 w-5 mr-2" />
                 Stream Quality
               </h3>
               <div className="space-y-3">
