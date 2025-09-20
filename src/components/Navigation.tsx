@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { Dialog } from '@headlessui/react'
-import { Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline'
+import { Bars3Icon, XMarkIcon, VideoCameraIcon } from '@heroicons/react/24/outline'
 import { useAuth } from '@/contexts/AuthContext'
 import RegistrationModal from './auth/RegistrationModal'
 import UserMenu from './user/UserMenu'
@@ -11,6 +11,7 @@ import Link from 'next/link'
 
 const navigation = [
   { name: 'Events', href: '/events' },
+  { name: 'Live', href: '/live' },
   { name: 'About', href: '/about' },
   { name: 'Newsroom', href: '/newsroom' },
   { name: 'Partner with BIG', href: '/partner' },
@@ -51,12 +52,17 @@ export default function Navigation() {
         </div>
         <div className="hidden lg:flex lg:gap-x-12">
           {navigation.map((item) => (
-            <Link key={item.name} href={item.href} className="text-sm font-semibold leading-6 text-white hover:text-blue-200">
+            <Link
+              key={item.name}
+              href={item.href}
+              className="text-sm font-semibold leading-6 text-white hover:text-blue-300"
+            >
+              {item.name === 'Live' && <VideoCameraIcon className="h-4 w-4 inline mr-1" />}
               {item.name}
             </Link>
           ))}
         </div>
-        <div className="hidden lg:flex lg:flex-1 lg:justify-end lg:gap-x-6">
+        <div className="hidden lg:flex lg:flex-1 lg:justify-end">
           {user ? (
             <UserMenu />
           ) : (
@@ -70,8 +76,8 @@ export default function Navigation() {
         </div>
       </nav>
       <Dialog as="div" className="lg:hidden" open={mobileMenuOpen} onClose={setMobileMenuOpen}>
-        <div className="fixed inset-0 z-10" />
-        <Dialog.Panel className="fixed inset-y-0 right-0 z-10 w-full overflow-y-auto bg-blue-900 px-6 py-6 sm:max-w-sm sm:ring-1 sm:ring-white/10">
+        <div className="fixed inset-0 z-50" />
+        <Dialog.Panel className="fixed inset-y-0 right-0 z-50 w-full overflow-y-auto bg-blue-900 px-6 py-6 sm:max-w-sm sm:ring-1 sm:ring-white/10">
           <div className="flex items-center justify-between">
             <Link href="/" className="-m-1.5 p-1.5">
               <span className="sr-only">BIG</span>
@@ -96,68 +102,30 @@ export default function Navigation() {
             </button>
           </div>
           <div className="mt-6 flow-root">
-            <div className="-my-6 divide-y divide-white/10">
+            <div className="-my-6 divide-y divide-white/25">
               <div className="space-y-2 py-6">
                 {navigation.map((item) => (
                   <Link
                     key={item.name}
                     href={item.href}
                     className="-mx-3 block rounded-lg px-3 py-2 text-base font-semibold leading-7 text-white hover:bg-white/10"
+                    onClick={() => setMobileMenuOpen(false)}
                   >
+                    {item.name === 'Live' && <VideoCameraIcon className="h-4 w-4 inline mr-2" />}
                     {item.name}
                   </Link>
                 ))}
               </div>
               <div className="py-6">
                 {user ? (
-                  <div className="space-y-2">
-                    <Link
-                      href="/profile"
-                      className="-mx-3 block rounded-lg px-3 py-2 text-base font-semibold leading-7 text-white hover:bg-white/10"
-                    >
-                      Profile
-                    </Link>
-                    <Link
-                      href="/tickets"
-                      className="-mx-3 block rounded-lg px-3 py-2 text-base font-semibold leading-7 text-white hover:bg-white/10"
-                    >
-                      Tickets
-                    </Link>
-                    <Link
-                      href="/inbox"
-                      className="-mx-3 block rounded-lg px-3 py-2 text-base font-semibold leading-7 text-white hover:bg-white/10"
-                    >
-                      Inbox
-                    </Link>
-                    <Link
-                      href="/friends"
-                      className="-mx-3 block rounded-lg px-3 py-2 text-base font-semibold leading-7 text-white hover:bg-white/10"
-                    >
-                      Friends
-                    </Link>
-                    <Link
-                      href="/settings"
-                      className="-mx-3 block rounded-lg px-3 py-2 text-base font-semibold leading-7 text-white hover:bg-white/10"
-                    >
-                      Settings
-                    </Link>
-                    <button
-                      onClick={() => {
-                        // Handle logout
-                        setMobileMenuOpen(false)
-                      }}
-                      className="-mx-3 block rounded-lg px-3 py-2 text-base font-semibold leading-7 text-white hover:bg-white/10 w-full text-left"
-                    >
-                      Logout
-                    </button>
-                  </div>
+                  <UserMenu />
                 ) : (
                   <button
                     onClick={() => {
                       setIsRegistrationOpen(true)
                       setMobileMenuOpen(false)
                     }}
-                    className="-mx-3 block rounded-lg px-3 py-2 text-base font-semibold leading-7 text-white border border-white hover:bg-white hover:text-blue-900 transition-colors"
+                    className="w-full text-left rounded-lg px-3 py-2 text-base font-semibold leading-7 text-white border border-white hover:bg-white hover:text-blue-900 transition-colors"
                   >
                     Membership
                   </button>
@@ -168,9 +136,10 @@ export default function Navigation() {
         </Dialog.Panel>
       </Dialog>
 
-      <RegistrationModal
-        isOpen={isRegistrationOpen}
-        onClose={() => setIsRegistrationOpen(false)}
+      {/* Registration Modal */}
+      <RegistrationModal 
+        isOpen={isRegistrationOpen} 
+        onClose={() => setIsRegistrationOpen(false)} 
       />
     </header>
   )

@@ -14,6 +14,7 @@
     "@hookform/resolvers": "^5.2.2",
     "@prisma/client": "^6.16.2",
     "@types/bcryptjs": "^2.4.6",
+    "agora-rtc-sdk-ng": "^4.24.0",
     "bcryptjs": "^3.0.2",
     "firebase": "^12.3.0",
     "lucide-react": "^0.544.0",

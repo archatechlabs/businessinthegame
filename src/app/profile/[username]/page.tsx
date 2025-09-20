@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { getPublicProfileByUsername, getProfileStats } from '@/utils/profileManagement'
 import { UserProfile } from '@/contexts/AuthContext'
 import Link from 'next/link'
+import Image from 'next/image'
 import { 
   UserIcon, 
   MapPinIcon, 
@@ -15,8 +16,21 @@ import {
   TicketIcon,
   DocumentTextIcon,
   ShareIcon,
-  HeartIcon
+  HeartIcon,
+  VideoCameraIcon,
+  PlayIcon,
+  EyeIcon
 } from '@heroicons/react/24/outline'
+
+interface LiveStream {
+  id: string
+  title: string
+  description: string
+  viewerCount: number
+  isLive: boolean
+  startedAt: Date
+  thumbnail: string
+}
 
 export default function PublicProfilePage() {
   const params = useParams()
@@ -27,6 +41,7 @@ export default function PublicProfilePage() {
     eventsAttended: 0,
     postsCount: 0
   })
+  const [liveStreams, setLiveStreams] = useState<LiveStream[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -36,6 +51,7 @@ export default function PublicProfilePage() {
       
       try {
         setLoading(true)
+        console.log('Fetching public profile via API for username:', params.username as string)
         const profileData = await getPublicProfileByUsername(params.username as string)
         
         if (!profileData) {
@@ -48,10 +64,33 @@ export default function PublicProfilePage() {
         // Load profile stats
         const profileStats = await getProfileStats(profileData.uid)
         setStats(profileStats)
-        
+
+        // Load user's live streams (mock data for now)
+        const mockStreams: LiveStream[] = [
+          {
+            id: '1',
+            title: 'My First Live Stream',
+            description: 'Testing out the live streaming feature',
+            viewerCount: 15,
+            isLive: true,
+            startedAt: new Date(Date.now() - 10 * 60 * 1000),
+            thumbnail: 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=400&h=225&fit=crop'
+          },
+          {
+            id: '2',
+            title: 'Tech Talk Live',
+            description: 'Discussing the latest in technology',
+            viewerCount: 0,
+            isLive: false,
+            startedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+            thumbnail: 'https://images.unsplash.com/photo-1557804506-669a67965ba0?w=400&h=225&fit=crop'
+          }
+        ]
+        setLiveStreams(mockStreams)
+
       } catch (err: unknown) {
-        console.error('Error loading profile:', err)
-        setError('Failed to load profile')
+        console.error('Error fetching public profile via API:', err)
+        setError('Failed to load profile.')
       } finally {
         setLoading(false)
       }
@@ -93,14 +132,12 @@ export default function PublicProfilePage() {
       {/* Banner */}
       <div className="relative h-64 bg-gradient-to-r from-blue-600 to-purple-600">
         {profile.banner ? (
-          <img
+          <Image
             src={profile.banner}
             alt="Profile banner"
-            className="w-full h-full object-cover"
-            onError={(e) => {
-              console.error('Banner image failed to load:', profile.banner)
-              e.currentTarget.style.display = 'none'
-            }}
+            fill
+            className="object-cover"
+            onError={(e) => console.error('Banner image failed to load:', e.currentTarget.src)}
           />
         ) : (
           <div className="w-full h-full bg-gradient-to-r from-blue-600 to-purple-600"></div>
@@ -110,14 +147,12 @@ export default function PublicProfilePage() {
         <div className="absolute -bottom-16 left-8">
           <div className="w-32 h-32 rounded-full border-4 border-white bg-white shadow-lg overflow-hidden">
             {profile.avatar ? (
-              <img
+              <Image
                 src={profile.avatar}
                 alt={profile.name}
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                  console.error('Avatar image failed to load:', profile.avatar)
-                  e.currentTarget.style.display = 'none'
-                }}
+                fill
+                className="object-cover"
+                onError={(e) => console.error('Avatar image failed to load:', e.currentTarget.src)}
               />
             ) : (
               <div className="w-full h-full bg-gray-200 flex items-center justify-center">
@@ -130,154 +165,155 @@ export default function PublicProfilePage() {
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-20">
         {/* Profile Header */}
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">{profile.name}</h1>
-              {profile.username && (
-                <p className="text-lg text-gray-600">@{profile.username}</p>
-              )}
-            </div>
-            
-            <div className="mt-4 sm:mt-0 flex space-x-3">
-              <button className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
-                <ShareIcon className="h-4 w-4 mr-2" />
-                Share
-              </button>
-              <button className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700">
-                <HeartIcon className="h-4 w-4 mr-2" />
-                Follow
-              </button>
-            </div>
+        <div className="flex justify-between items-end mb-8">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">{profile.name}</h1>
+            {profile.username && (
+              <p className="text-lg text-gray-600">@{profile.username}</p>
+            )}
+            {profile.location && (
+              <p className="text-gray-500 flex items-center mt-1">
+                <MapPinIcon className="h-4 w-4 mr-1" /> {profile.location}
+              </p>
+            )}
+          </div>
+          <div className="flex space-x-3">
+            {/* Add buttons for follow, message, share etc. */}
+            <button className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+              <HeartIcon className="h-4 w-4 mr-2" />
+              Follow
+            </button>
+            <button className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700">
+              <ShareIcon className="h-4 w-4 mr-2" />
+              Share
+            </button>
           </div>
         </div>
 
-        {/* Profile Content */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Main Content */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Bio */}
+          <div className="lg:col-span-2 space-y-8">
+            {/* Profile Bio */}
             {profile.bio && (
-              <div className="bg-white rounded-lg shadow-sm p-6">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">About</h2>
+              <div className="bg-white shadow rounded-lg p-6">
+                <h2 className="text-xl font-bold text-gray-900 mb-4">About {profile.name}</h2>
                 <p className="text-gray-700">{profile.bio}</p>
               </div>
             )}
 
-            {/* Contact Information */}
-            <div className="bg-white rounded-lg shadow-sm p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Contact Information</h2>
-              <div className="space-y-3">
-                {profile.location && (
-                  <div className="flex items-center">
-                    <MapPinIcon className="h-5 w-5 text-gray-400 mr-3" />
-                    <span className="text-gray-700">{profile.location}</span>
-                  </div>
-                )}
-                {profile.website && (
-                  <div className="flex items-center">
-                    <LinkIcon className="h-5 w-5 text-gray-400 mr-3" />
-                    <a 
-                      href={profile.website} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="text-blue-600 hover:text-blue-800"
-                    >
-                      {profile.website}
-                    </a>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Social Links */}
-            {profile.socialLinks && (
-              <div className="bg-white rounded-lg shadow-sm p-6">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">Social Links</h2>
-                <div className="flex space-x-4">
-                  {profile.socialLinks.twitter && (
-                    <a 
-                      href={`https://twitter.com/${profile.socialLinks.twitter}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-400 hover:text-blue-600"
-                    >
-                      Twitter
-                    </a>
-                  )}
-                  {profile.socialLinks.linkedin && (
-                    <a 
-                      href={`https://linkedin.com/in/${profile.socialLinks.linkedin}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-600 hover:text-blue-800"
-                    >
-                      LinkedIn
-                    </a>
-                  )}
-                  {profile.socialLinks.instagram && (
-                    <a 
-                      href={`https://instagram.com/${profile.socialLinks.instagram}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-pink-600 hover:text-pink-800"
-                    >
-                      Instagram
-                    </a>
-                  )}
-                  {profile.socialLinks.github && (
-                    <a 
-                      href={`https://github.com/${profile.socialLinks.github}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-gray-600 hover:text-gray-800"
-                    >
-                      GitHub
-                    </a>
-                  )}
+            {/* Live Streams Section */}
+            {liveStreams.length > 0 && (
+              <div className="bg-white shadow rounded-lg p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xl font-bold text-gray-900 flex items-center">
+                    <VideoCameraIcon className="h-5 w-5 mr-2" />
+                    Live Streams
+                  </h2>
+                  <Link
+                    href="/live"
+                    className="text-sm text-blue-600 hover:text-blue-800"
+                  >
+                    View All
+                  </Link>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {liveStreams.map((stream) => (
+                    <div key={stream.id} className="relative group">
+                      <div className="aspect-video bg-gray-200 rounded-lg overflow-hidden">
+                        <img
+                          src={stream.thumbnail}
+                          alt={stream.title}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                        />
+                        {stream.isLive && (
+                          <div className="absolute top-2 left-2">
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-600 text-white">
+                              <div className="w-2 h-2 bg-white rounded-full mr-1.5 animate-pulse"></div>
+                              LIVE
+                            </span>
+                          </div>
+                        )}
+                        <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all duration-200 flex items-center justify-center">
+                          <PlayIcon className="h-12 w-12 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
+                        </div>
+                      </div>
+                      <div className="mt-2">
+                        <h3 className="font-medium text-gray-900 line-clamp-2">{stream.title}</h3>
+                        <p className="text-sm text-gray-500 mt-1 line-clamp-2">{stream.description}</p>
+                        <div className="flex items-center justify-between mt-2 text-xs text-gray-500">
+                          <span className="flex items-center">
+                            <EyeIcon className="h-3 w-3 mr-1" />
+                            {stream.viewerCount} viewers
+                          </span>
+                          <span>
+                            {stream.isLive ? 'Live now' : new Date(stream.startedAt).toLocaleDateString()}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
-          </div>
 
-          {/* Sidebar */}
-          <div className="space-y-6">
-            {/* Stats */}
-            <div className="bg-white rounded-lg shadow-sm p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Stats</h2>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <UserGroupIcon className="h-5 w-5 text-gray-400 mr-3" />
-                    <span className="text-gray-700">Connections</span>
-                  </div>
-                  <span className="font-semibold text-gray-900">{stats.friendsCount}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <TicketIcon className="h-5 w-5 text-gray-400 mr-3" />
-                    <span className="text-gray-700">Events Attended</span>
-                  </div>
-                  <span className="font-semibold text-gray-900">{stats.eventsAttended}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <DocumentTextIcon className="h-5 w-5 text-gray-400 mr-3" />
-                    <span className="text-gray-700">Posts</span>
-                  </div>
-                  <span className="font-semibold text-gray-900">{stats.postsCount}</span>
-                </div>
+            {/* Profile Details & Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="bg-white shadow rounded-lg p-6">
+                <h2 className="text-xl font-bold text-gray-900 mb-4">Details</h2>
+                <ul className="space-y-2 text-gray-700">
+                  <li><span className="font-medium">Email:</span> {profile.email}</li>
+                  {profile.website && (
+                    <li>
+                      <span className="font-medium">Website:</span>{' '}
+                      <Link href={profile.website} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                        {profile.website}
+                      </Link>
+                    </li>
+                  )}
+                  {profile.socialLinks?.linkedin && (
+                    <li>
+                      <span className="font-medium">LinkedIn:</span>{' '}
+                      <Link href={profile.socialLinks.linkedin} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                        {profile.socialLinks.linkedin}
+                      </Link>
+                    </li>
+                  )}
+                  {profile.socialLinks?.twitter && (
+                    <li>
+                      <span className="font-medium">Twitter:</span>{' '}
+                      <Link href={profile.socialLinks.twitter} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                        {profile.socialLinks.twitter}
+                      </Link>
+                    </li>
+                  )}
+                  {profile.socialLinks?.instagram && (
+                    <li>
+                      <span className="font-medium">Instagram:</span>{' '}
+                      <Link href={profile.socialLinks.instagram} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                        {profile.socialLinks.instagram}
+                      </Link>
+                    </li>
+                  )}
+                </ul>
               </div>
-            </div>
 
-            {/* Member Since */}
-            <div className="bg-white rounded-lg shadow-sm p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Member Since</h2>
-              <div className="flex items-center">
-                <CalendarIcon className="h-5 w-5 text-gray-400 mr-3" />
-                <span className="text-gray-700">
-                  {profile.createdAt ? new Date(profile.createdAt).toLocaleDateString() : 'Unknown'}
-                </span>
+              <div className="bg-white shadow rounded-lg p-6">
+                <h2 className="text-xl font-bold text-gray-900 mb-4">Stats</h2>
+                <ul className="space-y-2 text-gray-700">
+                  <li className="flex items-center">
+                    <UserGroupIcon className="h-5 w-5 text-gray-400 mr-2" />
+                    <span className="font-medium">Friends:</span> {stats.friendsCount}
+                  </li>
+                  <li className="flex items-center">
+                    <CalendarIcon className="h-5 w-5 text-gray-400 mr-2" />
+                    <span className="font-medium">Events Attended:</span> {stats.eventsAttended}
+                  </li>
+                  <li className="flex items-center">
+                    <DocumentTextIcon className="h-5 w-5 text-gray-400 mr-2" />
+                    <span className="font-medium">Posts:</span> {stats.postsCount}
+                  </li>
+                </ul>
               </div>
             </div>
           </div>
