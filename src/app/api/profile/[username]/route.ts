@@ -32,8 +32,8 @@ export async function GET(
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       lastLoginAt: new Date().toISOString(),
-      avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
-      banner: 'https://images.unsplash.com/photo-1557804506-669a67965ba0?w=800&h=200&fit=crop',
+      avatar: 'https://i.pravatar.cc/150?img=1',
+      banner: 'https://picsum.photos/800/200?random=1',
       location: 'San Francisco, CA',
       website: 'https://example.com',
       socialLinks: {
