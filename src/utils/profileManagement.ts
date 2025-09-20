@@ -84,24 +84,45 @@ export const updateUserProfile = async (
 // Get public profile by username
 export const getPublicProfileByUsername = async (username: string): Promise<UserProfile | null> => {
   try {
+    console.log('Fetching public profile for username:', username)
+    
     const usersRef = collection(db, 'users')
     const q = query(usersRef, where('username', '==', username.toLowerCase()))
     const snapshot = await getDocs(q)
     
-    if (snapshot.empty) return null
+    console.log('Public profile query result:', snapshot.empty, 'docs found:', snapshot.docs.length)
+    
+    if (snapshot.empty) {
+      console.log('No profile found for username:', username)
+      return null
+    }
     
     const userDoc = snapshot.docs[0]
     const data = userDoc.data()
     
-    // Only return if profile is public
-    if (!data.isPublic) return null
+    console.log('Raw profile data:', data)
+    console.log('Avatar field:', data.avatar)
+    console.log('Banner field:', data.banner)
+    console.log('Is public:', data.isPublic)
     
-    return {
+    // Only return if profile is public
+    if (!data.isPublic) {
+      console.log('Profile is not public')
+      return null
+    }
+    
+    const profile = {
       ...data,
       createdAt: data.createdAt?.toDate(),
       updatedAt: data.updatedAt?.toDate(),
       lastLoginAt: data.lastLoginAt?.toDate()
     } as UserProfile
+    
+    console.log('Processed profile:', profile)
+    console.log('Processed avatar:', profile.avatar)
+    console.log('Processed banner:', profile.banner)
+    
+    return profile
   } catch (error) {
     console.error('Error fetching public profile:', error)
     return null
