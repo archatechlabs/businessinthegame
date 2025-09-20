@@ -12,14 +12,13 @@ import {
   Cog6ToothIcon,
   XMarkIcon
 } from '@heroicons/react/24/outline'
-import { canUserStream, getStreamingTier, getStreamQuality, generateChannelName, generateUID } from '@/utils/agora'
+import { canUserStream, getStreamingTier, getStreamQuality, generateChannelName } from '@/utils/agora'
+import AgoraVideoCall from '@/components/live/AgoraVideoCall'
 
 export default function StreamPage() {
   const { user, userProfile } = useAuth()
   const router = useRouter()
   const [isStreaming, setIsStreaming] = useState(false)
-  const [isMuted, setIsMuted] = useState(false)
-  const [isVideoEnabled, setIsVideoEnabled] = useState(true)
   const [streamTitle, setStreamTitle] = useState('')
   const [streamDescription, setStreamDescription] = useState('')
   const [viewerCount, setViewerCount] = useState(0)
@@ -27,9 +26,6 @@ export default function StreamPage() {
   const [channelName, setChannelName] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-
-  const videoRef = useRef<HTMLVideoElement>(null)
-  const streamRef = useRef<MediaStream | null>(null)
 
   useEffect(() => {
     if (!user || !userProfile) {
@@ -60,29 +56,12 @@ export default function StreamPage() {
     setError('')
 
     try {
-      // Get user media
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          width: { ideal: 1920 },
-          height: { ideal: 1080 },
-          frameRate: { ideal: 30 }
-        },
-        audio: true
-      })
-
-      streamRef.current = stream
-
-      // Display the stream in the video element
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream
+      // Check if Agora is configured
+      if (!process.env.NEXT_PUBLIC_AGORA_APP_ID) {
+        throw new Error('Agora is not configured. Please check your environment variables.')
       }
 
-      // In a real implementation, you would:
-      // 1. Generate Agora token
-      // 2. Join the Agora channel
-      // 3. Start publishing the stream
-      // 4. Save stream info to database
-
+      // Start streaming
       setIsStreaming(true)
       setViewerCount(0)
 
@@ -95,44 +74,15 @@ export default function StreamPage() {
 
     } catch (err) {
       console.error('Error starting stream:', err)
-      setError('Failed to start stream. Please check your camera and microphone permissions.')
+      setError(err instanceof Error ? err.message : 'Failed to start stream.')
     } finally {
       setLoading(false)
     }
   }
 
   const stopStream = () => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop())
-      streamRef.current = null
-    }
-
-    if (videoRef.current) {
-      videoRef.current.srcObject = null
-    }
-
     setIsStreaming(false)
     setViewerCount(0)
-  }
-
-  const toggleMute = () => {
-    if (streamRef.current) {
-      const audioTracks = streamRef.current.getAudioTracks()
-      audioTracks.forEach(track => {
-        track.enabled = !track.enabled
-      })
-      setIsMuted(!isMuted)
-    }
-  }
-
-  const toggleVideo = () => {
-    if (streamRef.current) {
-      const videoTracks = streamRef.current.getVideoTracks()
-      videoTracks.forEach(track => {
-        track.enabled = !track.enabled
-      })
-      setIsVideoEnabled(!isVideoEnabled)
-    }
   }
 
   const streamQuality = getStreamQuality(streamingTier)
@@ -171,56 +121,47 @@ export default function StreamPage() {
           <div className="lg:col-span-2">
             <div className="bg-white rounded-lg shadow-md overflow-hidden">
               <div className="relative">
-                <video
-                  ref={videoRef}
-                  autoPlay
-                  muted
-                  playsInline
-                  className="w-full h-96 bg-gray-900 object-cover"
-                />
-                
-                {!isStreaming && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-gray-900 bg-opacity-75">
+                {isStreaming ? (
+                  <div className="w-full h-96 bg-gray-900">
+                    <AgoraVideoCall
+                      channelName={channelName}
+                      onEndCall={stopStream}
+                      isHost={true}
+                    />
+                  </div>
+                ) : (
+                  <div className="w-full h-96 bg-gray-900 flex items-center justify-center">
                     <div className="text-center text-white">
                       <VideoCameraIcon className="h-16 w-16 mx-auto mb-4 opacity-50" />
-                      <p className="text-lg">Camera Preview</p>
-                      <p className="text-sm opacity-75">Start streaming to see your live video</p>
+                      <p className="text-lg">Ready to Stream</p>
+                      <p className="text-sm opacity-75">Start streaming to go live</p>
                     </div>
                   </div>
                 )}
 
-                {/* Stream Controls */}
+                {/* Stream Controls Overlay */}
                 {isStreaming && (
                   <div className="absolute bottom-4 left-4 right-4">
                     <div className="flex items-center justify-between bg-black bg-opacity-50 rounded-lg p-3">
                       <div className="flex items-center space-x-3">
-                        <button
-                          onClick={toggleMute}
-                          className={`p-2 rounded-full ${
-                            isMuted ? 'bg-red-600 text-white' : 'bg-white text-gray-900'
-                          }`}
-                        >
-                          <MicrophoneIcon className="h-5 w-5" />
-                        </button>
-                        
-                        <button
-                          onClick={toggleVideo}
-                          className={`p-2 rounded-full ${
-                            isVideoEnabled ? 'bg-white text-gray-900' : 'bg-red-600 text-white'
-                          }`}
-                        >
-                          {isVideoEnabled ? (
-                            <VideoCameraIcon className="h-5 w-5" />
-                          ) : (
-                            <XMarkIcon className="h-5 w-5" />
-                          )}
-                        </button>
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-600 text-white">
+                          <div className="w-2 h-2 bg-white rounded-full mr-1.5 animate-pulse"></div>
+                          LIVE
+                        </span>
                       </div>
 
                       <div className="flex items-center text-white">
                         <UserGroupIcon className="h-5 w-5 mr-2" />
                         <span className="text-sm font-medium">{viewerCount} viewers</span>
                       </div>
+
+                      <button
+                        onClick={stopStream}
+                        className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 flex items-center"
+                      >
+                        <StopIcon className="h-4 w-4 mr-2" />
+                        End Stream
+                      </button>
                     </div>
                   </div>
                 )}
@@ -285,14 +226,6 @@ export default function StreamPage() {
                         </span>
                         <span className="ml-3">Channel: {channelName}</span>
                       </div>
-
-                      <button
-                        onClick={stopStream}
-                        className="bg-red-600 text-white py-2 px-4 rounded-md hover:bg-red-700 flex items-center"
-                      >
-                        <StopIcon className="h-4 w-4 mr-2" />
-                        End Stream
-                      </button>
                     </div>
                   </div>
                 )}
@@ -325,6 +258,16 @@ export default function StreamPage() {
                   <span className="text-sm text-gray-600">Tier</span>
                   <span className="text-sm font-medium capitalize">{streamingTier}</span>
                 </div>
+              </div>
+            </div>
+
+            {/* Agora Status */}
+            <div className="bg-green-50 rounded-lg p-6">
+              <h3 className="text-lg font-semibold text-green-900 mb-2">Agora Status</h3>
+              <div className="text-sm text-green-800">
+                <p>✅ App ID: {process.env.NEXT_PUBLIC_AGORA_APP_ID ? 'Configured' : 'Not configured'}</p>
+                <p>📡 Channel: {channelName}</p>
+                <p>🔧 Mode: {isStreaming ? 'Live Streaming' : 'Ready'}</p>
               </div>
             </div>
 

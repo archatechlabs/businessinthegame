@@ -11,6 +11,7 @@ import {
   ChatBubbleLeftRightIcon,
   ArrowLeftIcon
 } from '@heroicons/react/24/outline'
+import AgoraViewer from '@/components/live/AgoraViewer'
 
 interface LiveStream {
   id: string
@@ -24,6 +25,7 @@ interface LiveStream {
   startedAt: Date
   thumbnail: string
   isAdminStream: boolean
+  channelName: string
 }
 
 export default function WatchStreamPage() {
@@ -40,8 +42,7 @@ export default function WatchStreamPage() {
     message: string
     timestamp: Date
   }>>([])
-
-  const videoRef = useRef<HTMLVideoElement>(null)
+  const [isViewing, setIsViewing] = useState(false)
 
   useEffect(() => {
     const loadStream = async () => {
@@ -59,7 +60,8 @@ export default function WatchStreamPage() {
         isLive: true,
         startedAt: new Date(Date.now() - 30 * 60 * 1000),
         thumbnail: 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=800&h=450&fit=crop',
-        isAdminStream: true
+        isAdminStream: true,
+        channelName: 'big-community-stream'
       }
 
       setStream(mockStream)
@@ -128,6 +130,14 @@ export default function WatchStreamPage() {
     setChatMessage('')
   }
 
+  const startWatching = () => {
+    setIsViewing(true)
+  }
+
+  const stopWatching = () => {
+    setIsViewing(false)
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -179,15 +189,31 @@ export default function WatchStreamPage() {
           <div className="lg:col-span-3">
             <div className="bg-black rounded-lg overflow-hidden">
               <div className="relative aspect-video">
-                <video
-                  ref={videoRef}
-                  className="w-full h-full object-cover"
-                  poster={stream.thumbnail}
-                  controls
-                >
-                  <source src="" type="video/mp4" />
-                  Your browser does not support the video tag.
-                </video>
+                {isViewing ? (
+                  <AgoraViewer
+                    channelName={stream.channelName}
+                    onLeave={stopWatching}
+                  />
+                ) : (
+                  <div className="w-full h-full bg-gray-900 flex items-center justify-center">
+                    <div className="text-center text-white">
+                      <div className="mb-4">
+                        <img
+                          src={stream.thumbnail}
+                          alt={stream.title}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <button
+                        onClick={startWatching}
+                        className="bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 flex items-center mx-auto"
+                      >
+                        <div className="w-3 h-3 bg-white rounded-full mr-2 animate-pulse"></div>
+                        Watch Live Stream
+                      </button>
+                    </div>
+                  </div>
+                )}
                 
                 {/* Live Indicator */}
                 <div className="absolute top-4 left-4">
