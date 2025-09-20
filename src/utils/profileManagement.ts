@@ -16,8 +16,6 @@ export const checkUsernameAvailability = async (username: string, currentUserId?
     // Don't check empty usernames
     if (!username || username.trim() === '') return true
     
-    console.log('Checking username availability for:', username, 'currentUserId:', currentUserId)
-    
     // Check if Firebase is properly configured
     if (!db) {
       console.error('Firebase db is not initialized')
@@ -28,11 +26,8 @@ export const checkUsernameAvailability = async (username: string, currentUserId?
     const q = query(usersRef, where('username', '==', username.toLowerCase()))
     const snapshot = await getDocs(q)
     
-    console.log('Query result:', snapshot.empty, 'docs found:', snapshot.docs.length)
-    
     // If no documents found, username is available
     if (snapshot.empty) {
-      console.log('Username is available')
       return true
     }
     
@@ -40,12 +35,10 @@ export const checkUsernameAvailability = async (username: string, currentUserId?
     if (currentUserId) {
       const userDoc = snapshot.docs.find(doc => doc.id === currentUserId)
       if (userDoc) {
-        console.log('User is checking their own username, allowing it')
         return true
       }
     }
     
-    console.log('Username is taken by another user')
     return false
   } catch (error) {
     console.error('Error checking username availability:', error)
@@ -84,30 +77,19 @@ export const updateUserProfile = async (
 // Get public profile by username
 export const getPublicProfileByUsername = async (username: string): Promise<UserProfile | null> => {
   try {
-    console.log('Fetching public profile for username:', username)
-    
     const usersRef = collection(db, 'users')
     const q = query(usersRef, where('username', '==', username.toLowerCase()))
     const snapshot = await getDocs(q)
     
-    console.log('Public profile query result:', snapshot.empty, 'docs found:', snapshot.docs.length)
-    
     if (snapshot.empty) {
-      console.log('No profile found for username:', username)
       return null
     }
     
     const userDoc = snapshot.docs[0]
     const data = userDoc.data()
     
-    console.log('Raw profile data:', data)
-    console.log('Avatar field:', data.avatar)
-    console.log('Banner field:', data.banner)
-    console.log('Is public:', data.isPublic)
-    
     // Only return if profile is public
     if (!data.isPublic) {
-      console.log('Profile is not public')
       return null
     }
     
@@ -117,10 +99,6 @@ export const getPublicProfileByUsername = async (username: string): Promise<User
       updatedAt: data.updatedAt?.toDate(),
       lastLoginAt: data.lastLoginAt?.toDate()
     } as UserProfile
-    
-    console.log('Processed profile:', profile)
-    console.log('Processed avatar:', profile.avatar)
-    console.log('Processed banner:', profile.banner)
     
     return profile
   } catch (error) {

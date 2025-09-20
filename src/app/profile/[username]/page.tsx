@@ -36,11 +36,7 @@ export default function PublicProfilePage() {
       
       try {
         setLoading(true)
-        console.log('Loading public profile for username:', params.username)
-        
         const profileData = await getPublicProfileByUsername(params.username as string)
-        
-        console.log('Profile data received:', profileData)
         
         if (!profileData) {
           setError('Profile not found or not public')
@@ -91,9 +87,6 @@ export default function PublicProfilePage() {
       </div>
     )
   }
-
-  console.log('Rendering profile with avatar:', profile.avatar)
-  console.log('Rendering profile with banner:', profile.banner)
 
   return (
     <div className="min-h-screen bg-gray-50">

@@ -35,6 +35,9 @@ service cloud.firestore {
       allow write: if request.auth != null && 
         isAdmin(request.auth.uid) && 
         getUserRole(userId) in ['user', 'moderator'];
+      
+      // Allow public access to profiles marked as public (for public profile pages)
+      allow read: if resource.data.isPublic == true;
     }
     
     // Events collection - allow all authenticated users to read
