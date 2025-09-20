@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { doc, getDoc } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { 
@@ -13,8 +14,18 @@ import {
   MapPinIcon, 
   BriefcaseIcon,
   GlobeAltIcon,
-  LinkIcon
+  LinkIcon,
+  ArrowLeftIcon,
+  Bars3Icon,
+  HomeIcon,
+  CogIcon,
+  TicketIcon,
+  InboxIcon,
+  UsersIcon,
+  CalendarIcon
 } from '@heroicons/react/24/outline'
+import { Menu, Transition } from '@headlessui/react'
+import { Fragment } from 'react'
 
 interface UserProfile {
   displayName?: string
@@ -94,13 +105,81 @@ export default function Profile() {
     )
   }
 
+  const menuItems = [
+    { name: 'Dashboard', href: '/dashboard', icon: HomeIcon },
+    { name: 'Edit Profile', href: '/profile/edit', icon: PencilIcon },
+    { name: 'Settings', href: '/settings', icon: CogIcon },
+    { name: 'My Tickets', href: '/tickets', icon: TicketIcon },
+    { name: 'Messages', href: '/inbox', icon: InboxIcon },
+    { name: 'Connections', href: '/friends', icon: UsersIcon },
+    { name: 'Events', href: '/events', icon: CalendarIcon },
+    { name: 'Main Website', href: '/', icon: HomeIcon }
+  ]
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-        {/* Header */}
+        {/* Header with Navigation */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Profile</h1>
-          <p className="mt-2 text-gray-600">Your personal information and preferences</p>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center space-x-4">
+              {/* Back Button */}
+              <button
+                onClick={() => router.back()}
+                className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                <ArrowLeftIcon className="h-4 w-4 mr-2" />
+                Back
+              </button>
+              
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900">Profile</h1>
+                <p className="mt-2 text-gray-600">Your personal information and preferences</p>
+              </div>
+            </div>
+            
+            {/* Menu Button */}
+            <div className="mt-4 sm:mt-0">
+              <Menu as="div" className="relative inline-block text-left">
+                <div>
+                  <Menu.Button className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    <Bars3Icon className="h-4 w-4 mr-2" />
+                    Menu
+                  </Menu.Button>
+                </div>
+
+                <Transition
+                  as={Fragment}
+                  enter="transition ease-out duration-100"
+                  enterFrom="transform opacity-0 scale-95"
+                  enterTo="transform opacity-100 scale-100"
+                  leave="transition ease-in duration-75"
+                  leaveFrom="transform opacity-100 scale-100"
+                  leaveTo="transform opacity-0 scale-95"
+                >
+                  <Menu.Items className="origin-top-right absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none z-50">
+                    <div className="py-1">
+                      {menuItems.map((item) => (
+                        <Menu.Item key={item.name}>
+                          {({ active }) => (
+                            <Link
+                              href={item.href}
+                              className={`${
+                                active ? 'bg-gray-100 text-gray-900' : 'text-gray-700'
+                              } group flex items-center px-4 py-2 text-sm`}
+                            >
+                              <item.icon className="h-4 w-4 mr-3" />
+                              {item.name}
+                            </Link>
+                          )}
+                        </Menu.Item>
+                      ))}
+                    </div>
+                  </Menu.Items>
+                </Transition>
+              </Menu>
+            </div>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -151,32 +230,37 @@ export default function Profile() {
                     <div className="flex items-center">
                       <UserIcon className="h-5 w-5 text-gray-400 mr-3" />
                       <div>
-                        <p className="text-sm font-medium text-gray-900">Display Name</p>
-                        <p className="text-sm text-gray-600">{profile?.displayName || userProfile?.name || user.displayName || 'Not set'}</p>
+                        <p className="text-sm font-medium text-gray-500">Name</p>
+                        <p className="text-sm text-gray-900">
+                          {profile?.displayName || userProfile?.name || user.displayName || 'Not provided'}
+                        </p>
                       </div>
                     </div>
+                    
                     <div className="flex items-center">
                       <EnvelopeIcon className="h-5 w-5 text-gray-400 mr-3" />
                       <div>
-                        <p className="text-sm font-medium text-gray-900">Email</p>
-                        <p className="text-sm text-gray-600">{profile?.email || user.email}</p>
+                        <p className="text-sm font-medium text-gray-500">Email</p>
+                        <p className="text-sm text-gray-900">{profile?.email || user.email}</p>
                       </div>
                     </div>
+                    
                     {profile?.phone && (
                       <div className="flex items-center">
                         <PhoneIcon className="h-5 w-5 text-gray-400 mr-3" />
                         <div>
-                          <p className="text-sm font-medium text-gray-900">Phone</p>
-                          <p className="text-sm text-gray-600">{profile.phone}</p>
+                          <p className="text-sm font-medium text-gray-500">Phone</p>
+                          <p className="text-sm text-gray-900">{profile.phone}</p>
                         </div>
                       </div>
                     )}
+                    
                     {profile?.location && (
                       <div className="flex items-center">
                         <MapPinIcon className="h-5 w-5 text-gray-400 mr-3" />
                         <div>
-                          <p className="text-sm font-medium text-gray-900">Location</p>
-                          <p className="text-sm text-gray-600">{profile.location}</p>
+                          <p className="text-sm font-medium text-gray-500">Location</p>
+                          <p className="text-sm text-gray-900">{profile.location}</p>
                         </div>
                       </div>
                     )}
@@ -188,21 +272,22 @@ export default function Profile() {
                   <div>
                     <h4 className="text-md font-medium text-gray-900 mb-4">Professional Information</h4>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      {profile?.company && (
-                        <div className="flex items-center">
-                          <BriefcaseIcon className="h-5 w-5 text-gray-400 mr-3" />
-                          <div>
-                            <p className="text-sm font-medium text-gray-900">Company</p>
-                            <p className="text-sm text-gray-600">{profile.company}</p>
-                          </div>
-                        </div>
-                      )}
                       {profile?.jobTitle && (
                         <div className="flex items-center">
                           <BriefcaseIcon className="h-5 w-5 text-gray-400 mr-3" />
                           <div>
-                            <p className="text-sm font-medium text-gray-900">Job Title</p>
-                            <p className="text-sm text-gray-600">{profile.jobTitle}</p>
+                            <p className="text-sm font-medium text-gray-500">Job Title</p>
+                            <p className="text-sm text-gray-900">{profile.jobTitle}</p>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {profile?.company && (
+                        <div className="flex items-center">
+                          <BriefcaseIcon className="h-5 w-5 text-gray-400 mr-3" />
+                          <div>
+                            <p className="text-sm font-medium text-gray-500">Company</p>
+                            <p className="text-sm text-gray-900">{profile.company}</p>
                           </div>
                         </div>
                       )}
@@ -213,8 +298,8 @@ export default function Profile() {
                 {/* Bio */}
                 {profile?.bio && (
                   <div>
-                    <h4 className="text-md font-medium text-gray-900 mb-2">Bio</h4>
-                    <p className="text-sm text-gray-600">{profile.bio}</p>
+                    <h4 className="text-md font-medium text-gray-900 mb-4">About</h4>
+                    <p className="text-sm text-gray-900">{profile.bio}</p>
                   </div>
                 )}
 
@@ -222,15 +307,15 @@ export default function Profile() {
                 {(profile?.website || profile?.linkedin || profile?.twitter || profile?.instagram) && (
                   <div>
                     <h4 className="text-md font-medium text-gray-900 mb-4">Social Links</h4>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-3">
                       {profile?.website && (
                         <div className="flex items-center">
                           <GlobeAltIcon className="h-5 w-5 text-gray-400 mr-3" />
                           <div>
-                            <p className="text-sm font-medium text-gray-900">Website</p>
+                            <p className="text-sm font-medium text-gray-500">Website</p>
                             <a 
-                              href={profile.website} 
-                              target="_blank" 
+                              href={profile.website.startsWith('http') ? profile.website : `https://${profile.website}`}
+                              target="_blank"
                               rel="noopener noreferrer"
                               className="text-sm text-blue-600 hover:text-blue-800"
                             >
@@ -239,50 +324,53 @@ export default function Profile() {
                           </div>
                         </div>
                       )}
+                      
                       {profile?.linkedin && (
                         <div className="flex items-center">
                           <LinkIcon className="h-5 w-5 text-gray-400 mr-3" />
                           <div>
-                            <p className="text-sm font-medium text-gray-900">LinkedIn</p>
+                            <p className="text-sm font-medium text-gray-500">LinkedIn</p>
                             <a 
-                              href={profile.linkedin} 
-                              target="_blank" 
+                              href={`https://linkedin.com/in/${profile.linkedin}`}
+                              target="_blank"
                               rel="noopener noreferrer"
                               className="text-sm text-blue-600 hover:text-blue-800"
                             >
-                              {profile.linkedin}
+                              linkedin.com/in/{profile.linkedin}
                             </a>
                           </div>
                         </div>
                       )}
+                      
                       {profile?.twitter && (
                         <div className="flex items-center">
                           <LinkIcon className="h-5 w-5 text-gray-400 mr-3" />
                           <div>
-                            <p className="text-sm font-medium text-gray-900">Twitter</p>
+                            <p className="text-sm font-medium text-gray-500">Twitter</p>
                             <a 
-                              href={`https://twitter.com/${profile.twitter.replace('@', '')}`} 
-                              target="_blank" 
+                              href={`https://twitter.com/${profile.twitter}`}
+                              target="_blank"
                               rel="noopener noreferrer"
                               className="text-sm text-blue-600 hover:text-blue-800"
                             >
-                              {profile.twitter}
+                              @{profile.twitter}
                             </a>
                           </div>
                         </div>
                       )}
+                      
                       {profile?.instagram && (
                         <div className="flex items-center">
                           <LinkIcon className="h-5 w-5 text-gray-400 mr-3" />
                           <div>
-                            <p className="text-sm font-medium text-gray-900">Instagram</p>
+                            <p className="text-sm font-medium text-gray-500">Instagram</p>
                             <a 
-                              href={`https://instagram.com/${profile.instagram.replace('@', '')}`} 
-                              target="_blank" 
+                              href={`https://instagram.com/${profile.instagram}`}
+                              target="_blank"
                               rel="noopener noreferrer"
                               className="text-sm text-blue-600 hover:text-blue-800"
                             >
-                              {profile.instagram}
+                              @{profile.instagram}
                             </a>
                           </div>
                         </div>
@@ -290,6 +378,25 @@ export default function Profile() {
                     </div>
                   </div>
                 )}
+
+                {/* Account Information */}
+                <div>
+                  <h4 className="text-md font-medium text-gray-900 mb-4">Account Information</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm font-medium text-gray-500">Member Since</p>
+                      <p className="text-sm text-gray-900">
+                        {profile?.createdAt ? new Date(profile.createdAt as string).toLocaleDateString() : 'Unknown'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-500">Last Updated</p>
+                      <p className="text-sm text-gray-900">
+                        {profile?.updatedAt ? new Date(profile.updatedAt as string).toLocaleDateString() : 'Unknown'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
