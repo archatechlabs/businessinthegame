@@ -107,8 +107,8 @@ const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
 }
 
 // Helper function to remove undefined values from an object
-const removeUndefinedValues = (obj: any): any => {
-  const cleaned: any = {}
+const removeUndefinedValues = (obj: Record<string, unknown>): Record<string, unknown> => {
+  const cleaned: Record<string, unknown> = {}
   for (const key in obj) {
     if (obj[key] !== undefined) {
       cleaned[key] = obj[key]
