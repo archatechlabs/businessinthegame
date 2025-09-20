@@ -16,6 +16,9 @@ export async function GET(
 
     console.log('API: Fetching public profile for username:', username)
 
+    // Add cache busting timestamp
+    const timestamp = Date.now()
+
     // For now, return a mock profile to test the API route
     // This will help us verify the API is working before fixing Firebase
     const mockProfile = {
@@ -32,8 +35,8 @@ export async function GET(
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       lastLoginAt: new Date().toISOString(),
-      avatar: 'https://i.pravatar.cc/150?img=1',
-      banner: 'https://picsum.photos/800/200?random=1',
+      avatar: `https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face&auto=format&q=80&t=${timestamp}`,
+      banner: `https://images.unsplash.com/photo-1497366216548-37526070297c?w=800&h=200&fit=crop&auto=format&q=80&t=${timestamp}`,
       location: 'San Francisco, CA',
       website: 'https://example.com',
       socialLinks: {
@@ -44,6 +47,8 @@ export async function GET(
     }
 
     console.log('API: Returning mock profile for username:', username)
+    console.log('API: Avatar URL:', mockProfile.avatar)
+    console.log('API: Banner URL:', mockProfile.banner)
     return NextResponse.json(mockProfile)
 
   } catch (error) {
