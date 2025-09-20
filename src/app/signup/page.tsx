@@ -4,11 +4,13 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { EyeIcon, EyeSlashIcon, CheckIcon, ArrowLeftIcon } from '@heroicons/react/24/outline'
 import { useAuth } from '@/contexts/AuthContext'
+import { validateUsername, checkUsernameAvailability } from '@/utils/profileManagement'
 import Link from 'next/link'
 import Image from 'next/image'
 
 interface FormErrors {
   name?: string
+  username?: string
   email?: string
   password?: string
   confirmPassword?: string
@@ -26,6 +28,7 @@ export default function SignupPage() {
   const { signUp, user } = useAuth()
   const [formData, setFormData] = useState({
     name: '',
+    username: '',
     email: '',
     password: '',
     confirmPassword: '',
@@ -38,6 +41,7 @@ export default function SignupPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [passwordStrength, setPasswordStrength] = useState<PasswordStrength>({ score: 0, feedback: '', color: '' })
+  const [isCheckingUsername, setIsCheckingUsername] = useState(false)
 
   // Redirect if already logged in
   useEffect(() => {
@@ -98,11 +102,52 @@ export default function SignupPage() {
     }
   }
 
+  const handleUsernameChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const username = e.target.value
+    setFormData(prev => ({ ...prev, username }))
+    
+    // Clear previous errors
+    if (errors.username) {
+      setErrors(prev => ({ ...prev, username: undefined }))
+    }
+    
+    if (!username) return
+    
+    // Validate username format
+    const validation = validateUsername(username)
+    if (!validation.valid) {
+      setErrors(prev => ({ ...prev, username: validation.error }))
+      return
+    }
+    
+    // Check availability
+    setIsCheckingUsername(true)
+    try {
+      const isAvailable = await checkUsernameAvailability(username)
+      if (!isAvailable) {
+        setErrors(prev => ({ ...prev, username: 'Username is already taken' }))
+      }
+    } catch (err: unknown) {
+      setErrors(prev => ({ ...prev, username: 'Error checking username availability' }))
+    } finally {
+      setIsCheckingUsername(false)
+    }
+  }
+
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {}
 
     if (!formData.name.trim()) {
       newErrors.name = 'Name is required'
+    }
+
+    if (!formData.username.trim()) {
+      newErrors.username = 'Username is required'
+    } else {
+      const validation = validateUsername(formData.username)
+      if (!validation.valid) {
+        newErrors.username = validation.error
+      }
     }
 
     if (!formData.email.trim()) {
@@ -142,7 +187,7 @@ export default function SignupPage() {
     setErrors({})
 
     try {
-      await signUp(formData.email, formData.password, formData.name, formData.bio)
+      await signUp(formData.email, formData.password, formData.name, formData.username, formData.bio)
       setSuccess(true)
     } catch (error: unknown) {
       console.error('Signup error:', error)
@@ -227,6 +272,31 @@ export default function SignupPage() {
               {errors.name && (
                 <p className="text-red-500 text-sm mt-1">{errors.name}</p>
               )}
+            </div>
+
+            {/* Username Field */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Username *
+              </label>
+              <input
+                type="text"
+                name="username"
+                value={formData.username}
+                onChange={handleUsernameChange}
+                required
+                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors ${
+                  errors.username ? 'border-red-300' : 'border-gray-300'
+                }`}
+                placeholder="Choose a username"
+              />
+              {isCheckingUsername && (
+                <p className="text-blue-600 text-sm mt-1">Checking availability...</p>
+              )}
+              {errors.username && (
+                <p className="text-red-500 text-sm mt-1">{errors.username}</p>
+              )}
+              <p className="text-gray-500 text-sm mt-1">This will be your public username (e.g., @username)</p>
             </div>
 
             {/* Email Field */}
@@ -389,7 +459,7 @@ export default function SignupPage() {
           {/* Submit Button */}
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || isCheckingUsername}
             className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? 'Creating Account...' : 'Create Account'}

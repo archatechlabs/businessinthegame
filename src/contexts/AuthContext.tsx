@@ -17,16 +17,27 @@ export type UserTier = 'member' | 'non-member' | 'premium' | 'vip' | 'founder'
 // Define role hierarchy
 export type UserRole = 'super-admin' | 'admin' | 'moderator' | 'user'
 
-interface UserProfile {
+export interface UserProfile {
   uid: string
   email: string
   name: string
+  username: string // New: unique username
   bio?: string
-  avatar?: string
+  avatar?: string // Profile picture URL
+  banner?: string // Banner image URL
+  location?: string
+  website?: string
+  socialLinks?: {
+    twitter?: string
+    linkedin?: string
+    instagram?: string
+    github?: string
+  }
   role: UserRole
   tier: UserTier
   status: 'active' | 'inactive' | 'suspended' | 'pending'
   permissions: string[]
+  isPublic: boolean // New: public profile setting
   createdAt: Date
   updatedAt: Date
   lastLoginAt?: Date
@@ -37,7 +48,7 @@ interface AuthContextType {
   user: User | null
   userProfile: UserProfile | null
   loading: boolean
-  signUp: (email: string, password: string, name: string, bio?: string) => Promise<void>
+  signUp: (email: string, password: string, name: string, username: string, bio?: string) => Promise<void>
   signIn: (email: string, password: string) => Promise<void>
   logout: () => Promise<void>
   
@@ -141,7 +152,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => unsubscribe()
   }, [])
 
-  const signUp = async (email: string, password: string, name: string, bio?: string) => {
+  const signUp = async (email: string, password: string, name: string, username: string, bio?: string) => {
     if (!process.env.NEXT_PUBLIC_FIREBASE_API_KEY || process.env.NEXT_PUBLIC_FIREBASE_API_KEY === 'demo-key') {
       throw new Error('Firebase not configured. Please set up your Firebase credentials.')
     }
@@ -155,11 +166,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         uid: user.uid,
         email: user.email!,
         name,
+        username,
         bio,
         role: 'user',
         tier: 'non-member',
         status: 'pending',
         permissions: ROLE_PERMISSIONS.user,
+        isPublic: true, // Default to public profile
         createdAt: new Date(),
         updatedAt: new Date()
       }
