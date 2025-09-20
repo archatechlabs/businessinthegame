@@ -11,6 +11,27 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID
 }
 
+// Debug logging in development
+if (process.env.NODE_ENV === 'development') {
+  console.log('Firebase Config:', {
+    apiKey: firebaseConfig.apiKey ? 'Set' : 'Missing',
+    authDomain: firebaseConfig.authDomain ? 'Set' : 'Missing',
+    projectId: firebaseConfig.projectId ? 'Set' : 'Missing',
+    storageBucket: firebaseConfig.storageBucket ? 'Set' : 'Missing',
+    messagingSenderId: firebaseConfig.messagingSenderId ? 'Set' : 'Missing',
+    appId: firebaseConfig.appId ? 'Set' : 'Missing'
+  })
+}
+
+// Check if all required config is present
+const requiredConfig = ['apiKey', 'authDomain', 'projectId', 'storageBucket', 'messagingSenderId', 'appId']
+const missingConfig = requiredConfig.filter(key => !firebaseConfig[key as keyof typeof firebaseConfig])
+
+if (missingConfig.length > 0) {
+  console.error('Missing Firebase configuration:', missingConfig)
+  throw new Error(`Missing Firebase configuration: ${missingConfig.join(', ')}`)
+}
+
 // Initialize Firebase
 const app = initializeApp(firebaseConfig)
 

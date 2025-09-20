@@ -9,28 +9,40 @@ interface AgoraVideoCallProps {
   isHost?: boolean
 }
 
-export default function AgoraVideoCall({ channelName, onEndCall }: AgoraVideoCallProps) {
+export default function AgoraVideoCall({ channelName, onEndCall, isHost = false }: AgoraVideoCallProps) {
   const { user, userProfile } = useAuth()
   const [isStreaming, setIsStreaming] = useState(false)
   const [isConnecting, setIsConnecting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [viewerCount, setViewerCount] = useState(0)
+  const [cameraPermission, setCameraPermission] = useState<'granted' | 'denied' | 'prompt' | 'unknown'>('unknown')
   
   const videoRef = useRef<HTMLVideoElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
 
   useEffect(() => {
-    const initAgora = async () => {
+    const initCamera = async () => {
       try {
-        // Check if Agora is configured
-        if (!process.env.NEXT_PUBLIC_AGORA_APP_ID) {
-          throw new Error('Agora App ID not configured')
-        }
-
+        console.log('🎥 Starting camera initialization...')
         setIsConnecting(true)
         setError(null)
 
-        // Get user media
+        // Check if we're in a secure context
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          throw new Error('Camera access not supported in this browser')
+        }
+
+        // Check camera permissions first
+        try {
+          const permission = await navigator.permissions.query({ name: 'camera' as PermissionName })
+          setCameraPermission(permission.state)
+          console.log('📷 Camera permission state:', permission.state)
+        } catch (permError) {
+          console.log('📷 Could not check camera permission:', permError)
+        }
+
+        // Get user media with better error handling
+        console.log('🎥 Requesting camera access...')
         const stream = await navigator.mediaDevices.getUserMedia({
           video: {
             width: { ideal: 1280 },
@@ -40,15 +52,26 @@ export default function AgoraVideoCall({ channelName, onEndCall }: AgoraVideoCal
           audio: true
         })
 
+        console.log('✅ Camera access granted!', stream)
         streamRef.current = stream
 
         // Display the stream in the video element
         if (videoRef.current) {
           videoRef.current.srcObject = stream
+          videoRef.current.play().then(() => {
+            console.log('▶️ Video started playing')
+            setIsStreaming(true)
+            setIsConnecting(false)
+          }).catch(err => {
+            console.error('❌ Error playing video:', err)
+            setError('Failed to play video stream')
+            setIsConnecting(false)
+          })
+        } else {
+          console.error('❌ Video element not found')
+          setError('Video element not found')
+          setIsConnecting(false)
         }
-
-        setIsStreaming(true)
-        setIsConnecting(false)
 
         // In a real implementation, you would:
         // 1. Initialize Agora RTC client
@@ -59,13 +82,26 @@ export default function AgoraVideoCall({ channelName, onEndCall }: AgoraVideoCal
         await saveStreamToDatabase(channelName, userProfile?.username || 'Unknown')
 
       } catch (err) {
-        console.error('Error initializing Agora:', err)
-        setError(err instanceof Error ? err.message : 'Failed to start stream')
+        console.error('❌ Error initializing camera:', err)
+        if (err instanceof Error) {
+          if (err.name === 'NotAllowedError') {
+            setError('Camera access denied. Please allow camera access and try again.')
+            setCameraPermission('denied')
+          } else if (err.name === 'NotFoundError') {
+            setError('No camera found. Please connect a camera and try again.')
+          } else if (err.name === 'NotReadableError') {
+            setError('Camera is being used by another application. Please close other apps and try again.')
+          } else {
+            setError(err.message)
+          }
+        } else {
+          setError('Failed to start stream')
+        }
         setIsConnecting(false)
       }
     }
 
-    initAgora()
+    initCamera()
 
     return () => {
       cleanup()
@@ -75,141 +111,127 @@ export default function AgoraVideoCall({ channelName, onEndCall }: AgoraVideoCal
   const cleanup = async () => {
     try {
       if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop())
+        streamRef.current.getTracks().forEach(track => {
+          track.stop()
+        })
         streamRef.current = null
       }
+      setIsStreaming(false)
     } catch (err) {
       console.error('Error during cleanup:', err)
     }
   }
 
-  const stopStream = async () => {
+  const saveStreamToDatabase = async (channelName: string, streamerName: string) => {
+    try {
+      // This would save the stream to your database
+      console.log('💾 Stream saved to database:', { channelName, streamerName })
+    } catch (err) {
+      console.error('Error saving stream to database:', err)
+    }
+  }
+
+  const stopStreaming = async () => {
     try {
       await cleanup()
-      setIsStreaming(false)
-      setViewerCount(0)
       onEndCall()
     } catch (err) {
       console.error('Error stopping stream:', err)
     }
   }
 
-  const toggleMute = async () => {
-    if (streamRef.current) {
-      const audioTracks = streamRef.current.getAudioTracks()
-      audioTracks.forEach(track => {
-        track.enabled = !track.enabled
-      })
-    }
-  }
-
-  const toggleVideo = async () => {
-    if (streamRef.current) {
-      const videoTracks = streamRef.current.getVideoTracks()
-      videoTracks.forEach(track => {
-        track.enabled = !track.enabled
-      })
-    }
-  }
-
-  const saveStreamToDatabase = async (channel: string, streamer: string) => {
-    try {
-      // In production, save to your database
-      console.log('Saving stream to database:', { channel, streamer, timestamp: new Date() })
-      // await db.collection('streams').add({
-      //   channelName: channel,
-      //   streamer: streamer,
-      //   startTime: new Date(),
-      //   isLive: true,
-      //   viewerCount: 0
-      // })
-    } catch (err) {
-      console.error('Error saving stream to database:', err)
-    }
-  }
-
   if (error) {
     return (
-      <div className="w-full h-full bg-gray-900 flex items-center justify-center">
+      <div className="flex items-center justify-center h-96 bg-gray-900 rounded-lg">
+        <div className="text-center text-white p-6">
+          <div className="text-red-400 text-6xl mb-4">⚠️</div>
+          <h3 className="text-xl font-semibold mb-2">Stream Error</h3>
+          <p className="text-gray-300 mb-4">{error}</p>
+          {cameraPermission === 'denied' && (
+            <div className="text-sm text-gray-400 mb-4">
+              <p>To fix this:</p>
+              <ol className="list-decimal list-inside space-y-1 mt-2">
+                <li>Click the camera icon in your browser&apos;s address bar</li>
+                <li>Select &quot;Allow&quot; for camera access</li>
+                <li>Refresh the page and try again</li>
+              </ol>
+            </div>
+          )}
+          <button
+            onClick={() => window.location.reload()}
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  if (isConnecting) {
+    return (
+      <div className="flex items-center justify-center h-96 bg-gray-900 rounded-lg">
         <div className="text-center text-white">
-          <div className="text-red-500 mb-4 text-4xl">⚠️</div>
-          <p className="text-lg mb-2">Stream Error</p>
-          <p className="text-sm text-gray-300 mb-4">{error}</p>
-          <div className="space-x-2">
-            <button
-              onClick={() => window.location.reload()}
-              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-            >
-              Retry
-            </button>
-            <button
-              onClick={stopStream}
-              className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
-            >
-              Close
-            </button>
-          </div>
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-white mx-auto mb-4"></div>
+          <p className="text-lg">Starting camera...</p>
+          <p className="text-sm text-gray-400 mt-2">Please allow camera access when prompted</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="w-full h-full bg-gray-900 relative">
+    <div className="relative bg-gray-900 rounded-lg overflow-hidden">
+      {/* Video Element */}
       <video
         ref={videoRef}
         autoPlay
         muted
         playsInline
-        className="w-full h-full object-cover"
+        className="w-full h-96 object-cover"
+        style={{ transform: 'scaleX(-1)' }} // Mirror the video
+        onLoadedMetadata={() => console.log('📹 Video metadata loaded')}
+        onCanPlay={() => console.log('▶️ Video can play')}
+        onPlay={() => console.log('▶️ Video is playing')}
+        onError={(e) => console.error('❌ Video error:', e)}
       />
       
-      {isConnecting && (
-        <div className="absolute inset-0 flex items-center justify-center bg-gray-900 bg-opacity-75">
-          <div className="text-center text-white">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
-            <p className="text-lg">Connecting to Agora...</p>
-            <p className="text-sm opacity-75">Channel: {channelName}</p>
+      {/* Overlay Controls */}
+      <div className="absolute bottom-4 left-4 right-4 flex justify-between items-center">
+        <div className="flex items-center space-x-4">
+          <div className="bg-red-500 text-white px-3 py-1 rounded-full text-sm font-semibold">
+            🔴 LIVE
+          </div>
+          <div className="bg-black bg-opacity-50 text-white px-3 py-1 rounded-full text-sm">
+            👥 {viewerCount} viewers
           </div>
         </div>
-      )}
-
-      {/* Stream Controls */}
-      <div className="absolute bottom-4 left-4 right-4">
-        <div className="flex items-center justify-between bg-black bg-opacity-50 rounded-lg p-3">
-          <div className="flex items-center space-x-3">
-            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-600 text-white">
-              <div className="w-2 h-2 bg-white rounded-full mr-1.5 animate-pulse"></div>
-              LIVE
-            </span>
-            <span className="text-white text-sm">Channel: {channelName}</span>
-            <span className="text-white text-sm">Viewers: {viewerCount}</span>
-          </div>
-
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={toggleMute}
-              className="p-2 bg-gray-600 text-white rounded hover:bg-gray-700"
-              title="Toggle Microphone"
-            >
-              🎤
-            </button>
-            <button
-              onClick={toggleVideo}
-              className="p-2 bg-gray-600 text-white rounded hover:bg-gray-700"
-              title="Toggle Camera"
-            >
-              📹
-            </button>
-            <button
-              onClick={stopStream}
-              className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 flex items-center"
-            >
-              <span className="mr-2">⏹️</span>
-              End Stream
-            </button>
-          </div>
+        
+        <div className="flex space-x-2">
+          <button
+            onClick={stopStreaming}
+            className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 flex items-center space-x-2"
+          >
+            <span>⏹️</span>
+            <span>End Stream</span>
+          </button>
         </div>
+      </div>
+
+      {/* Stream Info Overlay */}
+      <div className="absolute top-4 left-4 bg-black bg-opacity-50 text-white p-3 rounded-lg">
+        <div className="text-sm">
+          <div><strong>Channel:</strong> {channelName}</div>
+          <div><strong>Streamer:</strong> {userProfile?.username || 'Unknown'}</div>
+          <div><strong>Quality:</strong> {process.env.NEXT_PUBLIC_AGORA_APP_ID ? 'HD' : 'Not configured'}</div>
+        </div>
+      </div>
+
+      {/* Debug Info */}
+      <div className="absolute top-4 right-4 bg-black bg-opacity-50 text-white p-2 rounded text-xs">
+        <div>Status: {isStreaming ? 'Streaming' : 'Not Streaming'}</div>
+        <div>Camera: {cameraPermission}</div>
+        <div>Video: {videoRef.current ? 'Ready' : 'Not Ready'}</div>
       </div>
     </div>
   )

@@ -238,12 +238,12 @@ export default function RegistrationModal({ isOpen, onClose }: RegistrationModal
               <form onSubmit={handleSubmit} className="space-y-6">
                 {/* Name */}
                 <div>
-                  <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+                  <label htmlFor="reg-name" className="block text-sm font-medium text-gray-700">
                     Full Name
                   </label>
                   <div className="mt-1">
                     <input
-                      id="name"
+                      id="reg-name"
                       name="name"
                       type="text"
                       autoComplete="name"
@@ -258,12 +258,12 @@ export default function RegistrationModal({ isOpen, onClose }: RegistrationModal
 
                 {/* Username */}
                 <div>
-                  <label htmlFor="username" className="block text-sm font-medium text-gray-700">
+                  <label htmlFor="reg-username" className="block text-sm font-medium text-gray-700">
                     Username
                   </label>
                   <div className="mt-1 relative">
                     <input
-                      id="username"
+                      id="reg-username"
                       name="username"
                       type="text"
                       autoComplete="username"
@@ -286,12 +286,12 @@ export default function RegistrationModal({ isOpen, onClose }: RegistrationModal
 
                 {/* Email */}
                 <div>
-                  <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+                  <label htmlFor="reg-email" className="block text-sm font-medium text-gray-700">
                     Email address
                   </label>
                   <div className="mt-1">
                     <input
-                      id="email"
+                      id="reg-email"
                       name="email"
                       type="email"
                       autoComplete="email"
@@ -306,12 +306,12 @@ export default function RegistrationModal({ isOpen, onClose }: RegistrationModal
 
                 {/* Password */}
                 <div>
-                  <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+                  <label htmlFor="reg-password" className="block text-sm font-medium text-gray-700">
                     Password
                   </label>
                   <div className="mt-1 relative">
                     <input
-                      id="password"
+                      id="reg-password"
                       name="password"
                       type={showPassword ? 'text' : 'password'}
                       autoComplete="new-password"
@@ -350,12 +350,12 @@ export default function RegistrationModal({ isOpen, onClose }: RegistrationModal
 
                 {/* Confirm Password */}
                 <div>
-                  <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
+                  <label htmlFor="reg-confirmPassword" className="block text-sm font-medium text-gray-700">
                     Confirm Password
                   </label>
                   <div className="mt-1 relative">
                     <input
-                      id="confirmPassword"
+                      id="reg-confirmPassword"
                       name="confirmPassword"
                       type={showConfirmPassword ? 'text' : 'password'}
                       autoComplete="new-password"
@@ -381,12 +381,12 @@ export default function RegistrationModal({ isOpen, onClose }: RegistrationModal
 
                 {/* Bio (Optional) */}
                 <div>
-                  <label htmlFor="bio" className="block text-sm font-medium text-gray-700">
+                  <label htmlFor="reg-bio" className="block text-sm font-medium text-gray-700">
                     Bio (Optional)
                   </label>
                   <div className="mt-1">
                     <textarea
-                      id="bio"
+                      id="reg-bio"
                       name="bio"
                       rows={3}
                       value={formData.bio}
@@ -399,14 +399,14 @@ export default function RegistrationModal({ isOpen, onClose }: RegistrationModal
                 {/* Terms and Conditions */}
                 <div className="flex items-center">
                   <input
-                    id="termsAccepted"
+                    id="reg-termsAccepted"
                     name="termsAccepted"
                     type="checkbox"
                     checked={formData.termsAccepted}
                     onChange={handleChange}
                     className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                   />
-                  <label htmlFor="termsAccepted" className="ml-2 block text-sm text-gray-900">
+                  <label htmlFor="reg-termsAccepted" className="ml-2 block text-sm text-gray-900">
                     I agree to the{' '}
                     <a href="/terms" className="font-medium text-blue-600 hover:text-blue-500">
                       Terms and Conditions

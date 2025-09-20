@@ -527,14 +527,14 @@ export default function Dashboard() {
                   {/* Basic Information */}
                   <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
                     <div className="sm:col-span-3">
-                      <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+                      <label htmlFor="dashboard-name" className="block text-sm font-medium text-gray-700">
                         Full Name
                       </label>
                       <div className="mt-1">
                         <input
                           type="text"
                           name="name"
-                          id="name"
+                          id="dashboard-name"
                           value={formData.name}
                           onChange={handleFormChange}
                           className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
@@ -543,14 +543,14 @@ export default function Dashboard() {
                     </div>
 
                     <div className="sm:col-span-3">
-                      <label htmlFor="username" className="block text-sm font-medium text-gray-700">
+                      <label htmlFor="dashboard-username" className="block text-sm font-medium text-gray-700">
                         Username
                       </label>
                       <div className="mt-1 relative">
                         <input
                           type="text"
                           name="username"
-                          id="username"
+                          id="dashboard-username"
                           value={formData.username}
                           onChange={handleUsernameChange}
                           className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
@@ -568,12 +568,12 @@ export default function Dashboard() {
                     </div>
 
                     <div className="sm:col-span-6">
-                      <label htmlFor="bio" className="block text-sm font-medium text-gray-700">
+                      <label htmlFor="dashboard-bio" className="block text-sm font-medium text-gray-700">
                         Bio
                       </label>
                       <div className="mt-1">
                         <textarea
-                          id="bio"
+                          id="dashboard-bio"
                           name="bio"
                           rows={3}
                           value={formData.bio}

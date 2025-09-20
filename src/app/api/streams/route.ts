@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('Error fetching streams:', error)
     return NextResponse.json(
-      { error: 'Failed to fetch streams' },
+      { error: 'Failed to fetch streams', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     )
   }
@@ -45,14 +45,24 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    // Check Firebase configuration
+    if (!process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID) {
+      console.error('Firebase not configured - missing NEXT_PUBLIC_FIREBASE_PROJECT_ID')
+      return NextResponse.json(
+        { error: 'Firebase not configured' },
+        { status: 500 }
+      )
+    }
+
     const streamData = await request.json()
+    console.log('Creating stream with data:', streamData)
     
     // Validate required fields
     const { channelName, streamerId, streamerName, title, description } = streamData
     
     if (!channelName || !streamerId || !streamerName || !title) {
       return NextResponse.json(
-        { error: 'Missing required fields' },
+        { error: 'Missing required fields', received: { channelName, streamerId, streamerName, title } },
         { status: 400 }
       )
     }
@@ -77,7 +87,9 @@ export async function POST(request: NextRequest) {
       updatedAt: new Date()
     }
 
+    console.log('Adding stream document to Firestore...')
     const docRef = await addDoc(collection(db, 'streams'), streamDoc)
+    console.log('Stream created successfully with ID:', docRef.id)
 
     return NextResponse.json({ 
       id: docRef.id,
@@ -87,7 +99,11 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Error creating stream:', error)
     return NextResponse.json(
-      { error: 'Failed to create stream' },
+      { 
+        error: 'Failed to create stream', 
+        details: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined
+      },
       { status: 500 }
     )
   }

@@ -242,10 +242,10 @@ export default function EditProfilePage() {
             {/* Basic Information */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">Name *</label>
+                <label htmlFor="profile-name" className="block text-sm font-medium text-gray-700 mb-2">Name *</label>
                 <input
                   type="text"
-                  id="name"
+                  id="profile-name"
                   name="name"
                   value={formData.name}
                   onChange={handleInputChange}
@@ -255,10 +255,10 @@ export default function EditProfilePage() {
               </div>
 
               <div>
-                <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-2">Username *</label>
+                <label htmlFor="profile-username" className="block text-sm font-medium text-gray-700 mb-2">Username *</label>
                 <input
                   type="text"
-                  id="username"
+                  id="profile-username"
                   name="username"
                   value={formData.username}
                   onChange={handleUsernameChange}
@@ -278,9 +278,9 @@ export default function EditProfilePage() {
             </div>
 
             <div>
-              <label htmlFor="bio" className="block text-sm font-medium text-gray-700 mb-2">Bio</label>
+              <label htmlFor="profile-bio" className="block text-sm font-medium text-gray-700 mb-2">Bio</label>
               <textarea
-                id="bio"
+                id="profile-bio"
                 name="bio"
                 value={formData.bio}
                 onChange={handleInputChange}

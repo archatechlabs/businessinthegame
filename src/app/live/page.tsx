@@ -26,6 +26,7 @@ interface LiveStream {
   startedAt: Date
   thumbnail: string
   isAdminStream: boolean
+  channelName: string
 }
 
 export default function LiveStreamingPage() {
@@ -35,42 +36,33 @@ export default function LiveStreamingPage() {
   const [loading, setLoading] = useState(true)
   const [showPurchaseModal, setShowPurchaseModal] = useState(false)
 
-  // Mock data for now - in production this would come from your database
+  // Fetch live streams from API
   useEffect(() => {
-    const mockStreams: LiveStream[] = [
-      {
-        id: '1',
-        title: 'BIG Community Welcome Stream',
-        description: 'Join us for our weekly community check-in and updates',
-        streamerName: 'BIG Admin',
-        streamerUsername: 'bigadmin',
-        streamerAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face',
-        viewerCount: 42,
-        isLive: true,
-        startedAt: new Date(Date.now() - 30 * 60 * 1000), // 30 minutes ago
-        thumbnail: 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=800&h=450&fit=crop',
-        isAdminStream: true
-      },
-      {
-        id: '2',
-        title: 'Tech Talk: Building the Future',
-        description: 'Discussion about the latest in technology and entrepreneurship',
-        streamerName: 'Tech Expert',
-        streamerUsername: 'techexpert',
-        streamerAvatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
-        viewerCount: 28,
-        isLive: true,
-        startedAt: new Date(Date.now() - 15 * 60 * 1000), // 15 minutes ago
-        thumbnail: 'https://images.unsplash.com/photo-1557804506-669a67965ba0?w=800&h=450&fit=crop',
-        isAdminStream: true
+    const fetchLiveStreams = async () => {
+      try {
+        setLoading(true)
+        const response = await fetch('/api/streams')
+        if (response.ok) {
+          const streams = await response.json()
+          // Filter only live streams
+          const liveStreams = streams.filter((stream: LiveStream) => stream.isLive)
+          setLiveStreams(liveStreams)
+        } else {
+          console.error('Failed to fetch streams')
+          // Fallback to empty array
+          setLiveStreams([])
+        }
+      } catch (error) {
+        console.error('Error fetching streams:', error)
+        // Fallback to empty array
+        setLiveStreams([])
+      } finally {
+        setLoading(false)
       }
-    ]
-    
-    setLiveStreams(mockStreams)
-    setLoading(false)
-  }, [])
+    }
 
-  const canStream = isAdmin || isSuperAdmin || userProfile?.tier === 'premium' || userProfile?.tier === 'vip'
+    fetchLiveStreams()
+  }, [])
 
   const formatTimeAgo = (date: Date) => {
     const now = new Date()
@@ -86,12 +78,23 @@ export default function LiveStreamingPage() {
     return `${diffInDays}d ago`
   }
 
-  if (loading) {
+  const canUserStream = () => {
+    if (!userProfile) return false
+    return userProfile.role === 'super-admin' || userProfile.role === 'admin' || userProfile.role === 'moderator'
+  }
+
+  if (!user) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading live streams...</p>
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">Please Sign In</h1>
+          <p className="text-gray-600 mb-6">You need to be signed in to view live streams.</p>
+          <button
+            onClick={() => router.push('/signin')}
+            className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
+          >
+            Sign In
+          </button>
         </div>
       </div>
     )
@@ -99,177 +102,137 @@ export default function LiveStreamingPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+      {/* Header */}
+      <div className="bg-white shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 flex items-center">
-                <VideoCameraIcon className="h-8 w-8 mr-3 text-blue-600" />
-                Live Streaming
-              </h1>
-              <p className="mt-2 text-gray-600">
-                Watch live streams from BIG community members and admins
-              </p>
+              <h1 className="text-3xl font-bold text-gray-900">Live Streaming</h1>
+              <p className="mt-2 text-gray-600">Watch and interact with live streams from the BIG community</p>
             </div>
-            
-            <div className="mt-4 sm:mt-0 flex space-x-3">
-              {canStream ? (
-                <Link
-                  href="/live/stream"
-                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                >
-                  <PlusIcon className="h-4 w-4 mr-2" />
-                  Start Streaming
-                </Link>
-              ) : (
-                <button
-                  onClick={() => setShowPurchaseModal(true)}
-                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-                >
-                  <ShoppingCartIcon className="h-4 w-4 mr-2" />
-                  Purchase Streaming
-                </button>
-              )}
-            </div>
+            {canUserStream() && (
+              <Link
+                href="/live/stream"
+                className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 flex items-center space-x-2"
+              >
+                <VideoCameraIcon className="h-5 w-5" />
+                <span>Start Stream</span>
+              </Link>
+            )}
           </div>
         </div>
+      </div>
 
-        {/* Live Streams Grid */}
-        {liveStreams.length > 0 ? (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {loading ? (
+          <div className="text-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading live streams...</p>
+          </div>
+        ) : liveStreams.length === 0 ? (
+          <div className="text-center py-12">
+            <VideoCameraIcon className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">No Live Streams</h3>
+            <p className="text-gray-600 mb-6">There are no live streams at the moment.</p>
+            {canUserStream() && (
+              <Link
+                href="/live/stream"
+                className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 inline-flex items-center space-x-2"
+              >
+                <VideoCameraIcon className="h-5 w-5" />
+                <span>Start the First Stream</span>
+              </Link>
+            )}
+          </div>
+        ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {liveStreams.map((stream) => (
-              <div key={stream.id} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
-                {/* Thumbnail */}
-                <div className="relative">
-                  <img
-                    src={stream.thumbnail}
-                    alt={stream.title}
-                    className="w-full h-48 object-cover"
-                  />
+              <div key={stream.id} className="bg-white rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-shadow">
+                {/* Stream Thumbnail */}
+                <div className="relative aspect-video bg-gray-900">
+                  {stream.thumbnail ? (
+                    <img
+                      src={stream.thumbnail}
+                      alt={stream.title}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <VideoCameraIcon className="h-16 w-16 text-gray-600" />
+                    </div>
+                  )}
+                  
+                  {/* Live Badge */}
                   <div className="absolute top-4 left-4">
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-600 text-white">
-                      <div className="w-2 h-2 bg-white rounded-full mr-1.5 animate-pulse"></div>
-                      LIVE
-                    </span>
+                    <div className="bg-red-500 text-white px-3 py-1 rounded-full text-sm font-semibold flex items-center space-x-1">
+                      <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+                      <span>LIVE</span>
+                    </div>
                   </div>
+
+                  {/* Viewer Count */}
                   <div className="absolute top-4 right-4">
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-black bg-opacity-50 text-white">
-                      <EyeIcon className="h-3 w-3 mr-1" />
-                      {stream.viewerCount}
-                    </span>
+                    <div className="bg-black bg-opacity-50 text-white px-3 py-1 rounded-full text-sm flex items-center space-x-1">
+                      <EyeIcon className="h-4 w-4" />
+                      <span>{stream.viewerCount}</span>
+                    </div>
+                  </div>
+
+                  {/* Play Button Overlay */}
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <Link
+                      href={`/live/watch/${stream.id}`}
+                      className="bg-white bg-opacity-90 hover:bg-opacity-100 rounded-full p-4 transition-all transform hover:scale-110"
+                    >
+                      <PlayIcon className="h-8 w-8 text-gray-900" />
+                    </Link>
                   </div>
                 </div>
 
-                {/* Content */}
+                {/* Stream Info */}
                 <div className="p-6">
                   <h3 className="text-lg font-semibold text-gray-900 mb-2 line-clamp-2">
                     {stream.title}
                   </h3>
                   <p className="text-gray-600 text-sm mb-4 line-clamp-2">
-                    {stream.description}
+                    {stream.description || 'No description available'}
                   </p>
 
                   {/* Streamer Info */}
-                  <div className="flex items-center mb-4">
-                    <img
-                      src={stream.streamerAvatar}
-                      alt={stream.streamerName}
-                      className="h-8 w-8 rounded-full object-cover"
-                    />
-                    <div className="ml-3">
-                      <p className="text-sm font-medium text-gray-900">
-                        {stream.streamerName}
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        @{stream.streamerUsername}
-                      </p>
+                  <div className="flex items-center space-x-3 mb-4">
+                    <div className="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center">
+                      {stream.streamerAvatar ? (
+                        <img
+                          src={stream.streamerAvatar}
+                          alt={stream.streamerName}
+                          className="w-10 h-10 rounded-full object-cover"
+                        />
+                      ) : (
+                        <span className="text-gray-600 font-semibold">
+                          {stream.streamerName.charAt(0).toUpperCase()}
+                        </span>
+                      )}
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-900">{stream.streamerName}</p>
+                      <p className="text-sm text-gray-500">@{stream.streamerUsername}</p>
                     </div>
                   </div>
 
-                  {/* Stream Info */}
+                  {/* Stream Stats */}
                   <div className="flex items-center justify-between text-sm text-gray-500">
-                    <div className="flex items-center">
-                      <ClockIcon className="h-4 w-4 mr-1" />
-                      {formatTimeAgo(stream.startedAt)}
+                    <div className="flex items-center space-x-1">
+                      <ClockIcon className="h-4 w-4" />
+                      <span>{formatTimeAgo(stream.startedAt)}</span>
                     </div>
-                    {stream.isAdminStream && (
-                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                        Admin Stream
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Watch Button */}
-                  <div className="mt-4">
-                    <Link
-                      href={`/live/watch/${stream.id}`}
-                      className="w-full inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                    >
-                      <PlayIcon className="h-4 w-4 mr-2" />
-                      Watch Now
-                    </Link>
+                    <div className="flex items-center space-x-1">
+                      <UserGroupIcon className="h-4 w-4" />
+                      <span>{stream.viewerCount} watching</span>
+                    </div>
                   </div>
                 </div>
               </div>
             ))}
-          </div>
-        ) : (
-          <div className="text-center py-12">
-            <VideoCameraIcon className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No Live Streams</h3>
-            <p className="text-gray-600 mb-6">
-              There are no live streams at the moment. Check back later!
-            </p>
-            {canStream && (
-              <Link
-                href="/live/stream"
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700"
-              >
-                <PlusIcon className="h-4 w-4 mr-2" />
-                Start the First Stream
-              </Link>
-            )}
-          </div>
-        )}
-
-        {/* Purchase Modal */}
-        {showPurchaseModal && (
-          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-            <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-              <div className="mt-3">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">
-                  Purchase Live Streaming
-                </h3>
-                <div className="space-y-4">
-                  <div className="border rounded-lg p-4">
-                    <h4 className="font-semibold text-gray-900">Premium Streaming</h4>
-                    <p className="text-sm text-gray-600 mb-2">
-                      Get access to live streaming capabilities
-                    </p>
-                    <p className="text-2xl font-bold text-green-600">$29.99/month</p>
-                  </div>
-                  <div className="flex space-x-3">
-                    <button
-                      onClick={() => setShowPurchaseModal(false)}
-                      className="flex-1 px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      onClick={() => {
-                        // Handle purchase logic here
-                        setShowPurchaseModal(false)
-                        alert('Purchase functionality coming soon!')
-                      }}
-                      className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700"
-                    >
-                      Purchase
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
           </div>
         )}
       </div>
