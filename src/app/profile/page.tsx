@@ -22,7 +22,8 @@ import {
   TicketIcon,
   InboxIcon,
   UsersIcon,
-  CalendarIcon
+  CalendarIcon,
+  EyeIcon
 } from '@heroicons/react/24/outline'
 import { Menu, Transition } from '@headlessui/react'
 import { Fragment } from 'react'
@@ -39,6 +40,8 @@ interface UserProfile {
   linkedin?: string
   twitter?: string
   instagram?: string
+  username?: string
+  isPublic?: boolean
   createdAt?: unknown
   updatedAt?: unknown
 }
@@ -115,6 +118,9 @@ export default function Profile() {
     { name: 'Events', href: '/events', icon: CalendarIcon },
     { name: 'Main Website', href: '/', icon: HomeIcon }
   ]
+
+  // Get the username for the public profile URL
+  const username = userProfile?.username || profile?.username || user.email?.split('@')[0] || 'user'
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -202,16 +208,49 @@ export default function Profile() {
                 {profile?.company && (
                   <p className="text-sm text-gray-500">{profile.company}</p>
                 )}
+                
+                {/* Username display */}
+                {username && (
+                  <p className="text-sm text-blue-600 mt-1">@{username}</p>
+                )}
               </div>
               
-              <div className="mt-6">
+              <div className="mt-6 space-y-3">
                 <button
                   onClick={() => router.push('/profile/edit')}
-                  className="w-full flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                  className="w-full flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
                 >
                   <PencilIcon className="h-4 w-4 mr-2" />
                   Edit Profile
                 </button>
+                
+                <Link
+                  href={`/profile/${username}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full flex items-center justify-center px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors"
+                >
+                  <EyeIcon className="h-4 w-4 mr-2" />
+                  View Public Profile
+                </Link>
+              </div>
+              
+              {/* Profile Status */}
+              <div className="mt-4 p-3 bg-gray-50 rounded-md">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">Profile Status</span>
+                  <span className={`text-sm font-medium ${
+                    profile?.isPublic !== false ? 'text-green-600' : 'text-red-600'
+                  }`}>
+                    {profile?.isPublic !== false ? 'Public' : 'Private'}
+                  </span>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  {profile?.isPublic !== false 
+                    ? 'Your profile is visible to other users' 
+                    : 'Your profile is private and not visible to other users'
+                  }
+                </p>
               </div>
             </div>
           </div>
