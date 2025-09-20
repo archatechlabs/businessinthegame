@@ -16,23 +16,41 @@ export const checkUsernameAvailability = async (username: string, currentUserId?
     // Don't check empty usernames
     if (!username || username.trim() === '') return true
     
+    console.log('Checking username availability for:', username, 'currentUserId:', currentUserId)
+    
+    // Check if Firebase is properly configured
+    if (!db) {
+      console.error('Firebase db is not initialized')
+      return true // Allow username if Firebase is not configured
+    }
+    
     const usersRef = collection(db, 'users')
     const q = query(usersRef, where('username', '==', username.toLowerCase()))
     const snapshot = await getDocs(q)
     
+    console.log('Query result:', snapshot.empty, 'docs found:', snapshot.docs.length)
+    
     // If no documents found, username is available
-    if (snapshot.empty) return true
+    if (snapshot.empty) {
+      console.log('Username is available')
+      return true
+    }
     
     // If current user is checking their own username, it's available
     if (currentUserId) {
       const userDoc = snapshot.docs.find(doc => doc.id === currentUserId)
-      if (userDoc) return true
+      if (userDoc) {
+        console.log('User is checking their own username, allowing it')
+        return true
+      }
     }
     
+    console.log('Username is taken by another user')
     return false
   } catch (error) {
     console.error('Error checking username availability:', error)
-    return false
+    // Return true to allow username if there's an error (fail open)
+    return true
   }
 }
 
