@@ -37,6 +37,19 @@ export async function GET(
     }
 
     console.log('API: Fetching public profile for username:', username)
+    console.log('API: Firebase config:', {
+      projectId: firebaseConfig.projectId,
+      hasApiKey: !!firebaseConfig.apiKey
+    })
+
+    // Check if Firebase is properly configured
+    if (!firebaseConfig.apiKey || firebaseConfig.apiKey === 'demo-key') {
+      console.error('API: Firebase not configured properly')
+      return NextResponse.json(
+        { error: 'Firebase not configured' },
+        { status: 500 }
+      )
+    }
 
     // Query users collection for the username
     const usersRef = collection(db, 'users')
@@ -86,6 +99,10 @@ export async function GET(
 
   } catch (error) {
     console.error('API: Error fetching public profile:', error)
+    console.error('API: Error details:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined
+    })
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
