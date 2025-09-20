@@ -10,10 +10,12 @@ import {
   MicrophoneIcon,
   UserGroupIcon,
   Cog6ToothIcon,
-  XMarkIcon
+  XMarkIcon,
+  CreditCardIcon
 } from '@heroicons/react/24/outline'
 import { canUserStream, getStreamingTier, getStreamQuality, generateChannelName } from '@/utils/agora'
 import AgoraVideoCall from '@/components/live/AgoraVideoCall'
+import LiveChat from '@/components/live/LiveChat'
 
 export default function StreamPage() {
   const { user, userProfile } = useAuth()
@@ -26,6 +28,8 @@ export default function StreamPage() {
   const [channelName, setChannelName] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [showPaymentModal, setShowPaymentModal] = useState(false)
+  const [streamId, setStreamId] = useState<string | null>(null)
 
   useEffect(() => {
     if (!user || !userProfile) {
@@ -35,7 +39,7 @@ export default function StreamPage() {
 
     // Check if user can stream
     if (!canUserStream(userProfile.role, userProfile.tier)) {
-      router.push('/live')
+      setShowPaymentModal(true)
       return
     }
 
@@ -61,6 +65,30 @@ export default function StreamPage() {
         throw new Error('Agora is not configured. Please check your environment variables.')
       }
 
+      // Create stream in database
+      const streamResponse = await fetch('/api/streams', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          channelName,
+          streamerId: user?.uid,
+          streamerName: userProfile?.username || 'Unknown',
+          title: streamTitle,
+          description: streamDescription,
+          quality: getStreamQuality(streamingTier).quality,
+          category: 'general'
+        })
+      })
+
+      if (!streamResponse.ok) {
+        throw new Error('Failed to create stream')
+      }
+
+      const streamData = await streamResponse.json()
+      setStreamId(streamData.id)
+
       // Start streaming
       setIsStreaming(true)
       setViewerCount(0)
@@ -80,9 +108,57 @@ export default function StreamPage() {
     }
   }
 
-  const stopStream = () => {
+  const stopStream = async () => {
+    try {
+      // Update stream in database
+      if (streamId) {
+        await fetch(`/api/streams/${streamId}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            isLive: false,
+            endTime: new Date()
+          })
+        })
+      }
+    } catch (err) {
+      console.error('Error stopping stream:', err)
+    }
+
     setIsStreaming(false)
     setViewerCount(0)
+    setStreamId(null)
+  }
+
+  const purchaseStreamingAccess = async (tier: 'premium' | 'vip') => {
+    try {
+      const response = await fetch('/api/payments/streaming', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: user?.uid,
+          tier,
+          paymentMethod: 'card',
+          amount: tier === 'premium' ? 29.99 : 99.99
+        })
+      })
+
+      if (response.ok) {
+        setShowPaymentModal(false)
+        setStreamingTier(tier)
+        // Refresh user profile
+        window.location.reload()
+      } else {
+        setError('Payment failed. Please try again.')
+      }
+    } catch (err) {
+      console.error('Payment error:', err)
+      setError('Payment failed. Please try again.')
+    }
   }
 
   const streamQuality = getStreamQuality(streamingTier)
@@ -116,9 +192,9 @@ export default function StreamPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           {/* Stream Preview */}
-          <div className="lg:col-span-2">
+          <div className="lg:col-span-3">
             <div className="bg-white rounded-lg shadow-md overflow-hidden">
               <div className="relative">
                 {isStreaming ? (
@@ -233,8 +309,18 @@ export default function StreamPage() {
             </div>
           </div>
 
-          {/* Stream Settings */}
+          {/* Sidebar */}
           <div className="space-y-6">
+            {/* Live Chat */}
+            {isStreaming && (
+              <div className="h-96">
+                <LiveChat
+                  channelName={channelName}
+                  streamerId={user.uid}
+                />
+              </div>
+            )}
+
             {/* Stream Quality */}
             <div className="bg-white rounded-lg shadow-md p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
@@ -270,21 +356,56 @@ export default function StreamPage() {
                 <p>🔧 Mode: {isStreaming ? 'Live Streaming' : 'Ready'}</p>
               </div>
             </div>
-
-            {/* Stream Tips */}
-            <div className="bg-blue-50 rounded-lg p-6">
-              <h3 className="text-lg font-semibold text-blue-900 mb-4">Streaming Tips</h3>
-              <ul className="space-y-2 text-sm text-blue-800">
-                <li>• Ensure good lighting for better video quality</li>
-                <li>• Use a good microphone for clear audio</li>
-                <li>• Test your setup before going live</li>
-                <li>• Engage with your audience in the chat</li>
-                <li>• Keep your stream title descriptive and engaging</li>
-              </ul>
-            </div>
           </div>
         </div>
       </div>
+
+      {/* Payment Modal */}
+      {showPaymentModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-8 max-w-md w-full mx-4">
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">Upgrade to Stream</h2>
+            <p className="text-gray-600 mb-6">
+              You need a streaming subscription to start live streaming. Choose your plan:
+            </p>
+            
+            <div className="space-y-4">
+              <div className="border rounded-lg p-4">
+                <h3 className="font-semibold text-lg">Premium Streaming</h3>
+                <p className="text-gray-600 text-sm mb-2">720p streaming, 30 FPS</p>
+                <p className="text-2xl font-bold text-blue-600">$29.99/month</p>
+                <button
+                  onClick={() => purchaseStreamingAccess('premium')}
+                  className="w-full mt-3 bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700"
+                >
+                  <CreditCardIcon className="h-4 w-4 inline mr-2" />
+                  Subscribe to Premium
+                </button>
+              </div>
+              
+              <div className="border rounded-lg p-4">
+                <h3 className="font-semibold text-lg">VIP Streaming</h3>
+                <p className="text-gray-600 text-sm mb-2">1080p streaming, 60 FPS, priority support</p>
+                <p className="text-2xl font-bold text-purple-600">$99.99/month</p>
+                <button
+                  onClick={() => purchaseStreamingAccess('vip')}
+                  className="w-full mt-3 bg-purple-600 text-white py-2 px-4 rounded-md hover:bg-purple-700"
+                >
+                  <CreditCardIcon className="h-4 w-4 inline mr-2" />
+                  Subscribe to VIP
+                </button>
+              </div>
+            </div>
+            
+            <button
+              onClick={() => setShowPaymentModal(false)}
+              className="w-full mt-4 text-gray-600 hover:text-gray-800"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

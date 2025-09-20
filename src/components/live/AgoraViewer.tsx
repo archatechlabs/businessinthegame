@@ -11,16 +11,22 @@ interface AgoraViewerProps {
 export default function AgoraViewer({ channelName, onLeave }: AgoraViewerProps) {
   const { user } = useAuth()
   const [isViewing, setIsViewing] = useState(false)
+  const [isConnecting, setIsConnecting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [viewerCount, setViewerCount] = useState(0)
+  
   const videoRef = useRef<HTMLVideoElement>(null)
 
   useEffect(() => {
-    const startViewing = async () => {
+    const initAgora = async () => {
       try {
         // Check if Agora is configured
         if (!process.env.NEXT_PUBLIC_AGORA_APP_ID) {
           throw new Error('Agora App ID not configured')
         }
+
+        setIsConnecting(true)
+        setError(null)
 
         // In a real implementation, you would:
         // 1. Initialize Agora RTC client
@@ -28,35 +34,62 @@ export default function AgoraViewer({ channelName, onLeave }: AgoraViewerProps) 
         // 3. Subscribe to remote streams
 
         setIsViewing(true)
-        setError(null)
+        setIsConnecting(false)
 
       } catch (err) {
-        console.error('Error starting viewer:', err)
+        console.error('Error initializing Agora viewer:', err)
         setError(err instanceof Error ? err.message : 'Failed to start viewing')
+        setIsConnecting(false)
       }
     }
 
-    startViewing()
-  }, [channelName])
+    initAgora()
 
-  const stopViewing = () => {
-    setIsViewing(false)
-    onLeave()
+    return () => {
+      cleanup()
+    }
+  }, [channelName, user])
+
+  const cleanup = async () => {
+    try {
+      // Cleanup logic here
+    } catch (err) {
+      console.error('Error during cleanup:', err)
+    }
+  }
+
+  const stopViewing = async () => {
+    try {
+      await cleanup()
+      setIsViewing(false)
+      setViewerCount(0)
+      onLeave()
+    } catch (err) {
+      console.error('Error stopping viewer:', err)
+    }
   }
 
   if (error) {
     return (
       <div className="w-full h-full bg-gray-900 flex items-center justify-center">
         <div className="text-center text-white">
-          <div className="text-red-500 mb-4">⚠️</div>
+          <div className="text-red-500 mb-4 text-4xl">⚠️</div>
           <p className="text-lg mb-2">Viewing Error</p>
-          <p className="text-sm text-gray-300">{error}</p>
-          <button
-            onClick={stopViewing}
-            className="mt-4 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
-          >
-            Close
-          </button>
+          <p className="text-sm text-gray-300 mb-4">{error}</p>
+          <div className="space-x-2">
+            <button
+              onClick={() => window.location.reload()}
+              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+            >
+              Retry
+            </button>
+            <button
+              onClick={stopViewing}
+              className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+            >
+              Close
+            </button>
+          </div>
         </div>
       </div>
     )
@@ -71,12 +104,22 @@ export default function AgoraViewer({ channelName, onLeave }: AgoraViewerProps) 
         className="w-full h-full object-cover"
       />
       
-      {!isViewing && (
+      {isConnecting && (
         <div className="absolute inset-0 flex items-center justify-center bg-gray-900 bg-opacity-75">
           <div className="text-center text-white">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
             <p className="text-lg">Connecting to Stream...</p>
             <p className="text-sm opacity-75">Channel: {channelName}</p>
+          </div>
+        </div>
+      )}
+
+      {!isViewing && !isConnecting && (
+        <div className="absolute inset-0 flex items-center justify-center bg-gray-900">
+          <div className="text-center text-white">
+            <div className="text-gray-400 mb-4 text-4xl">📺</div>
+            <p className="text-lg mb-2">No Stream Available</p>
+            <p className="text-sm text-gray-300">Waiting for streamer to start...</p>
           </div>
         </div>
       )}
@@ -90,6 +133,7 @@ export default function AgoraViewer({ channelName, onLeave }: AgoraViewerProps) 
               LIVE
             </span>
             <span className="text-white text-sm">Channel: {channelName}</span>
+            <span className="text-white text-sm">Viewers: {viewerCount}</span>
           </div>
 
           <button
