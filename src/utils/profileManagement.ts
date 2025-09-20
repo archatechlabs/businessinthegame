@@ -74,59 +74,38 @@ export const updateUserProfile = async (
   }
 }
 
-// Get public profile by username - try with auth first, then without
+// Get public profile by username - use API route to bypass client-side permissions
 export const getPublicProfileByUsername = async (username: string): Promise<UserProfile | null> => {
   try {
-    console.log('Attempting to fetch public profile for username:', username)
+    console.log('Fetching public profile via API for username:', username)
     
-    const usersRef = collection(db, 'users')
-    const q = query(usersRef, where('username', '==', username.toLowerCase()))
+    const response = await fetch(`/api/profile/${encodeURIComponent(username)}`)
     
-    console.log('Query created, attempting to execute...')
-    const snapshot = await getDocs(q)
-    
-    console.log('Query executed successfully, docs found:', snapshot.docs.length)
-    
-    if (snapshot.empty) {
-      console.log('No profile found for username:', username)
-      return null
+    if (!response.ok) {
+      if (response.status === 404) {
+        console.log('Profile not found for username:', username)
+        return null
+      }
+      if (response.status === 403) {
+        console.log('Profile is not public for username:', username)
+        return null
+      }
+      throw new Error(`HTTP error! status: ${response.status}`)
     }
     
-    const userDoc = snapshot.docs[0]
-    const data = userDoc.data()
+    const profile = await response.json()
+    console.log('Profile fetched successfully via API:', profile.name)
     
-    console.log('Profile data retrieved:', {
-      username: data.username,
-      isPublic: data.isPublic,
-      hasAvatar: !!data.avatar,
-      hasBanner: !!data.banner
-    })
-    
-    // Only return if profile is public
-    if (!data.isPublic) {
-      console.log('Profile is not public, returning null')
-      return null
-    }
-    
-    const profile = {
-      ...data,
-      createdAt: data.createdAt?.toDate(),
-      updatedAt: data.updatedAt?.toDate(),
-      lastLoginAt: data.lastLoginAt?.toDate()
+    // Convert ISO strings back to Date objects for consistency
+    return {
+      ...profile,
+      createdAt: new Date(profile.createdAt),
+      updatedAt: new Date(profile.updatedAt),
+      lastLoginAt: profile.lastLoginAt ? new Date(profile.lastLoginAt) : undefined
     } as UserProfile
     
-    console.log('Profile processed successfully:', profile.name)
-    return profile
   } catch (error) {
-    console.error('Error fetching public profile:', error)
-    
-    // If it's a permissions error, try a different approach
-    if (error instanceof Error && error.message.includes('permissions')) {
-      console.log('Permissions error detected, trying alternative approach...')
-      // For now, return null - we'll need to fix the security rules
-      return null
-    }
-    
+    console.error('Error fetching public profile via API:', error)
     return null
   }
 }
