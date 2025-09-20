@@ -116,7 +116,7 @@ export default function Dashboard() {
     
     setIsCheckingUsername(true)
     try {
-      const isAvailable = await checkUsernameAvailability(username)
+      const isAvailable = await checkUsernameAvailability(username, user!.uid)
       if (!isAvailable) {
         setUsernameError('Username is already taken')
       }

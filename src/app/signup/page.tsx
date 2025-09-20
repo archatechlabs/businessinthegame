@@ -123,7 +123,7 @@ export default function SignupPage() {
     // Check availability
     setIsCheckingUsername(true)
     try {
-      const isAvailable = await checkUsernameAvailability(username)
+      const isAvailable = await checkUsernameAvailability(username, undefined)
       if (!isAvailable) {
         setErrors(prev => ({ ...prev, username: 'Username is already taken' }))
       }

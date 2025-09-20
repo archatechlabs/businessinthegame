@@ -1,10 +1,21 @@
-import { doc, updateDoc, getDoc, collection, query, where, getDocs, addDoc } from 'firebase/firestore'
+import { 
+  collection, 
+  doc, 
+  getDocs, 
+  query, 
+  where, 
+  updateDoc, 
+  addDoc 
+} from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { UserProfile } from '@/contexts/AuthContext'
 
 // Check if username is available
 export const checkUsernameAvailability = async (username: string, currentUserId?: string): Promise<boolean> => {
   try {
+    // Don't check empty usernames
+    if (!username || username.trim() === '') return true
+    
     const usersRef = collection(db, 'users')
     const q = query(usersRef, where('username', '==', username.toLowerCase()))
     const snapshot = await getDocs(q)
@@ -79,71 +90,7 @@ export const getPublicProfileByUsername = async (username: string): Promise<User
   }
 }
 
-// Get public profile by user ID
-export const getPublicProfileById = async (userId: string): Promise<UserProfile | null> => {
-  try {
-    const userDoc = await getDoc(doc(db, 'users', userId))
-    if (!userDoc.exists()) return null
-    
-    const data = userDoc.data()
-    
-    // Only return if profile is public
-    if (!data.isPublic) return null
-    
-    return {
-      ...data,
-      createdAt: data.createdAt?.toDate(),
-      updatedAt: data.updatedAt?.toDate(),
-      lastLoginAt: data.lastLoginAt?.toDate()
-    } as UserProfile
-  } catch (error) {
-    console.error('Error fetching public profile:', error)
-    return null
-  }
-}
-
-// Search public profiles
-export const searchPublicProfiles = async (
-  searchTerm: string,
-  limit: number = 20
-): Promise<UserProfile[]> => {
-  try {
-    const usersRef = collection(db, 'users')
-    const q = query(usersRef, where('isPublic', '==', true))
-    const snapshot = await getDocs(q)
-    
-    const profiles: UserProfile[] = []
-    
-    for (const docSnapshot of snapshot.docs) {
-      const data = docSnapshot.data()
-      const profile = {
-        ...data,
-        createdAt: data.createdAt?.toDate(),
-        updatedAt: data.updatedAt?.toDate(),
-        lastLoginAt: data.lastLoginAt?.toDate()
-      } as UserProfile
-      
-      // Filter by search term (name, username, bio)
-      const searchLower = searchTerm.toLowerCase()
-      if (
-        profile.name.toLowerCase().includes(searchLower) ||
-        profile.username.toLowerCase().includes(searchLower) ||
-        (profile.bio && profile.bio.toLowerCase().includes(searchLower))
-      ) {
-        profiles.push(profile)
-      }
-      
-      if (profiles.length >= limit) break
-    }
-    
-    return profiles
-  } catch (error) {
-    console.error('Error searching public profiles:', error)
-    return []
-  }
-}
-
-// Get featured public profiles
+// Get featured profiles for discovery
 export const getFeaturedProfiles = async (limit: number = 10): Promise<UserProfile[]> => {
   try {
     const usersRef = collection(db, 'users')
@@ -179,7 +126,7 @@ export const getFeaturedProfiles = async (limit: number = 10): Promise<UserProfi
 // Upload profile image (placeholder - would integrate with Firebase Storage)
 export const uploadProfileImage = async (
   file: File,
-  type: 'avatar' | 'banner'
+  _type: 'avatar' | 'banner'
 ): Promise<string> => {
   // This is a placeholder implementation
   // In a real app, you would upload to Firebase Storage and return the download URL
