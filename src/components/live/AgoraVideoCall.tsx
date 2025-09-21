@@ -9,84 +9,128 @@ interface AgoraVideoCallProps {
   isHost?: boolean
 }
 
-export default function AgoraVideoCall({ channelName, onEndCall, isHost = false }: AgoraVideoCallProps) {
-  const { user, userProfile } = useAuth()
+export default function AgoraVideoCall({ channelName, onEndCall }: AgoraVideoCallProps) {
+  const { userProfile } = useAuth()
   const [isStreaming, setIsStreaming] = useState(false)
   const [isConnecting, setIsConnecting] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [viewerCount, setViewerCount] = useState(0)
   const [cameraPermission, setCameraPermission] = useState<'granted' | 'denied' | 'prompt' | 'unknown'>('unknown')
   const [videoReady, setVideoReady] = useState(false)
-  const [stream, setStream] = useState<MediaStream | null>(null)
-  const [componentMounted, setComponentMounted] = useState(false)
-  const [videoElementCreated, setVideoElementCreated] = useState(false)
+  const [agoraLoaded, setAgoraLoaded] = useState(false)
   
-  const containerRef = useRef<HTMLDivElement>(null)
-  const videoElementRef = useRef<HTMLVideoElement | null>(null)
-  const retryCount = useRef(0)
-  const maxRetries = 50
+  const clientRef = useRef<unknown>(null)
+  const localVideoTrackRef = useRef<unknown>(null)
+  const localAudioTrackRef = useRef<unknown>(null)
+  const videoContainerRef = useRef<HTMLDivElement>(null)
 
-  // Create video element programmatically
-  const createVideoElement = useCallback(() => {
-    if (videoElementRef.current) {
-      console.log('🎬 Video element already exists')
-      return videoElementRef.current
-    }
-
-    console.log('�� Creating video element programmatically')
-    const video = document.createElement('video')
-    video.autoplay = true
-    video.muted = true
-    video.playsInline = true
-    video.className = 'w-full h-96 object-cover'
-    video.style.transform = 'scaleX(-1)' // Mirror the video
-    video.id = 'agora-video-element' // Add unique ID for debugging
-    
-    // Add event listeners
-    video.addEventListener('loadedmetadata', () => console.log('📹 Video metadata loaded'))
-    video.addEventListener('canplay', () => console.log('▶️ Video can play'))
-    video.addEventListener('play', () => console.log('▶️ Video is playing'))
-    video.addEventListener('loadstart', () => console.log('🔄 Video load started'))
-    video.addEventListener('loadeddata', () => console.log('📊 Video data loaded'))
-    video.addEventListener('error', (e) => console.error('❌ Video error:', e))
-
-    videoElementRef.current = video
-    setVideoElementCreated(true)
-    console.log('✅ Video element created and stored in ref')
-    return video
-  }, [])
-
-  // Mark component as mounted and create video element
+  // Load Agora SDK
   useEffect(() => {
-    console.log('🎬 AgoraVideoCall component mounted')
-    setComponentMounted(true)
-    
-    // Create video element immediately
-    const video = createVideoElement()
-    console.log('🎬 Video element created:', video)
-    
-    // Add video element to container when container is available
-    const addVideoToContainer = () => {
-      if (containerRef.current && videoElementRef.current) {
-        console.log('📹 Adding video element to container')
-        containerRef.current.appendChild(videoElementRef.current)
-        console.log('✅ Video element added to container')
-        console.log('📹 Container children:', containerRef.current.children.length)
-        console.log('📹 Video element in DOM:', document.getElementById('agora-video-element'))
-      } else {
-        console.log('⏳ Waiting for container to be available', {
-          container: !!containerRef.current,
-          video: !!videoElementRef.current
-        })
-        setTimeout(addVideoToContainer, 100)
+    const loadAgora = async () => {
+      try {
+        await import('agora-rtc-sdk-ng')
+        console.log('✅ Agora SDK loaded')
+        setAgoraLoaded(true)
+      } catch (err) {
+        console.error('❌ Failed to load Agora SDK:', err)
+        setError('Failed to load video streaming SDK')
       }
     }
     
-    // Wait a bit for the container to be rendered
-    setTimeout(addVideoToContainer, 200)
-  }, [createVideoElement])
+    loadAgora()
+  }, [])
 
-  // Initialize camera when component mounts
+  // Initialize Agora client
+  const initAgoraClient = useCallback(async () => {
+    if (clientRef.current) {
+      return clientRef.current
+    }
+
+    if (!agoraLoaded) {
+      throw new Error('Agora SDK not loaded')
+    }
+
+    console.log('🎬 Initializing Agora client')
+    const AgoraRTCModule = await import('agora-rtc-sdk-ng')
+    const client = AgoraRTCModule.default.createClient({
+      mode: 'rtc',
+      codec: 'vp8'
+    })
+    
+    clientRef.current = client
+    console.log('✅ Agora client created')
+    return client
+  }, [agoraLoaded])
+
+  // Create camera and microphone tracks
+  const createTracks = useCallback(async () => {
+    try {
+      console.log('🎥 Creating camera and microphone tracks...')
+      
+      const AgoraRTCModule = await import('agora-rtc-sdk-ng')
+      
+      // Create camera video track
+      const videoTrack = await AgoraRTCModule.default.createCameraVideoTrack({
+        encoderConfig: {
+          width: 1280,
+          height: 720,
+          frameRate: 30
+        }
+      })
+      
+      // Create microphone audio track
+      const audioTrack = await AgoraRTCModule.default.createMicrophoneAudioTrack()
+      
+      localVideoTrackRef.current = videoTrack
+      localAudioTrackRef.current = audioTrack
+      
+      console.log('✅ Camera and microphone tracks created')
+      
+      // Play the video track in the container
+      if (videoContainerRef.current) {
+        videoTrack.play(videoContainerRef.current)
+        console.log('✅ Video track playing in container')
+        setVideoReady(true)
+      }
+      
+      return { videoTrack, audioTrack }
+    } catch (err) {
+      console.error('❌ Error creating tracks:', err)
+      throw err
+    }
+  }, [])
+
+  // Join channel and publish tracks
+  const joinChannel = useCallback(async (client: unknown, videoTrack: unknown, audioTrack: unknown) => {
+    try {
+      console.log('🎯 Joining Agora channel:', channelName)
+      
+      // Type assertion for Agora client methods
+      const agoraClient = client as { join: (appId: string, channel: string, token: string | null, uid: string | number | null) => Promise<void>; publish: (tracks: unknown[]) => Promise<void> }
+      
+      // Join the channel
+      await agoraClient.join(
+        process.env.NEXT_PUBLIC_AGORA_APP_ID!,
+        channelName,
+        null, // token - we'll add this later
+        null  // uid - let Agora assign one
+      )
+      
+      console.log('✅ Joined channel successfully')
+      
+      // Publish tracks
+      await agoraClient.publish([videoTrack, audioTrack])
+      console.log('✅ Published tracks successfully')
+      
+      setIsStreaming(true)
+      setIsConnecting(false)
+      
+    } catch (err) {
+      console.error('❌ Error joining channel:', err)
+      throw err
+    }
+  }, [channelName])
+
+  // Initialize camera and join channel
   const initCamera = useCallback(async () => {
     try {
       console.log('🎥 Starting camera initialization...')
@@ -107,20 +151,15 @@ export default function AgoraVideoCall({ channelName, onEndCall, isHost = false 
         console.log('📷 Could not check camera permission:', permError)
       }
 
-      // Get user media
-      console.log('🎥 Requesting camera access...')
-      const mediaStream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-          frameRate: { ideal: 30 }
-        },
-        audio: true
-      })
-
-      console.log('✅ Camera access granted!', mediaStream)
-      setStream(mediaStream)
-
+      // Initialize Agora client
+      const client = await initAgoraClient()
+      
+      // Create tracks
+      const { videoTrack, audioTrack } = await createTracks()
+      
+      // Join channel and publish
+      await joinChannel(client, videoTrack, audioTrack)
+      
       // Save stream to database
       await saveStreamToDatabase(channelName, userProfile?.username || 'Unknown')
 
@@ -142,11 +181,11 @@ export default function AgoraVideoCall({ channelName, onEndCall, isHost = false 
       }
       setIsConnecting(false)
     }
-  }, [channelName, userProfile])
+  }, [channelName, userProfile, initAgoraClient, createTracks, joinChannel])
 
-  // Initialize camera on mount with delay
+  // Initialize camera on mount
   useEffect(() => {
-    if (componentMounted) {
+    if (agoraLoaded) {
       const timer = setTimeout(() => {
         initCamera()
       }, 1000) // Wait 1 second for component to fully render
@@ -155,103 +194,28 @@ export default function AgoraVideoCall({ channelName, onEndCall, isHost = false 
         clearTimeout(timer)
       }
     }
-  }, [componentMounted, initCamera])
-
-  // Set up video element when stream is available - FIXED APPROACH
-  useEffect(() => {
-    if (stream && componentMounted) {
-      console.log('🎯 Stream available and component mounted, attempting to attach to video')
-      retryCount.current = 0 // Reset retry count
-      
-      // Use a direct function instead of useCallback to avoid closure issues
-      const attachStream = () => {
-        console.log('🎯 Attempting to attach stream to video element (attempt', retryCount.current + 1, ')')
-        
-        // Get current ref values directly
-        const currentVideoRef = videoElementRef.current
-        const currentContainerRef = containerRef.current
-        
-        console.log('🔍 Current refs:', {
-          videoRef: !!currentVideoRef,
-          containerRef: !!currentContainerRef,
-          videoElementCreated
-        })
-        
-        // Try multiple ways to find the video element
-        let video = currentVideoRef
-        
-        if (!video) {
-          // Try to find by ID
-          video = document.getElementById('agora-video-element') as HTMLVideoElement
-          console.log('🔍 Found video by ID:', !!video)
-        }
-        
-        if (!video) {
-          // Try to find in container
-          video = currentContainerRef?.querySelector('video') as HTMLVideoElement
-          console.log('🔍 Found video in container:', !!video)
-        }
-        
-        if (!video) {
-          // Try to find any video element
-          const videos = document.querySelectorAll('video')
-          console.log('🔍 Found video elements in document:', videos.length)
-          if (videos.length > 0) {
-            video = videos[0] as HTMLVideoElement
-            console.log('🔍 Using first video element found')
-          }
-        }
-        
-        console.log('🔍 Final video element found:', !!video)
-        
-        if (video) {
-          console.log('✅ Video element found, attaching stream')
-          video.srcObject = stream
-          
-          video.play().then(() => {
-            console.log('▶️ Video started playing')
-            setIsStreaming(true)
-            setVideoReady(true)
-            setIsConnecting(false)
-            retryCount.current = 0 // Reset retry count on success
-          }).catch(err => {
-            console.error('❌ Error playing video:', err)
-            setError('Failed to play video stream')
-            setIsConnecting(false)
-          })
-        } else {
-          retryCount.current++
-          if (retryCount.current < maxRetries) {
-            console.log('❌ Video element not found, retrying in 100ms (attempt', retryCount.current, '/', maxRetries, ')')
-            // Retry after a short delay
-            setTimeout(attachStream, 100)
-          } else {
-            console.error('❌ Video element not found after maximum retries')
-            setError('Video element not found. Please refresh and try again.')
-            setIsConnecting(false)
-          }
-        }
-      }
-      
-      // Start the attachment process
-      attachStream()
-    }
-  }, [stream, componentMounted, videoElementCreated, maxRetries])
+  }, [agoraLoaded, initCamera])
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      if (stream) {
-        stream.getTracks().forEach(track => {
-          track.stop()
-        })
+      if (localVideoTrackRef.current) {
+        const videoTrack = localVideoTrackRef.current as { close: () => void }
+        videoTrack.close()
+        localVideoTrackRef.current = null
       }
-      if (videoElementRef.current) {
-        videoElementRef.current.remove()
-        videoElementRef.current = null
+      if (localAudioTrackRef.current) {
+        const audioTrack = localAudioTrackRef.current as { close: () => void }
+        audioTrack.close()
+        localAudioTrackRef.current = null
+      }
+      if (clientRef.current) {
+        const client = clientRef.current as { leave: () => Promise<void> }
+        client.leave()
+        clientRef.current = null
       }
     }
-  }, [stream])
+  }, [])
 
   const saveStreamToDatabase = async (channelName: string, streamerName: string) => {
     try {
@@ -263,11 +227,20 @@ export default function AgoraVideoCall({ channelName, onEndCall, isHost = false 
 
   const stopStreaming = async () => {
     try {
-      if (stream) {
-        stream.getTracks().forEach(track => {
-          track.stop()
-        })
-        setStream(null)
+      if (localVideoTrackRef.current) {
+        const videoTrack = localVideoTrackRef.current as { close: () => void }
+        videoTrack.close()
+        localVideoTrackRef.current = null
+      }
+      if (localAudioTrackRef.current) {
+        const audioTrack = localAudioTrackRef.current as { close: () => void }
+        audioTrack.close()
+        localAudioTrackRef.current = null
+      }
+      if (clientRef.current) {
+        const client = clientRef.current as { leave: () => Promise<void> }
+        await client.leave()
+        clientRef.current = null
       }
       setIsStreaming(false)
       setVideoReady(false)
@@ -305,21 +278,24 @@ export default function AgoraVideoCall({ channelName, onEndCall, isHost = false 
     )
   }
 
-  if (isConnecting) {
+  if (!agoraLoaded || isConnecting) {
     return (
       <div className="flex items-center justify-center h-96 bg-gray-900 rounded-lg">
         <div className="text-center text-white">
           <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-white mx-auto mb-4"></div>
-          <p className="text-lg">Starting camera...</p>
-          <p className="text-sm text-gray-400 mt-2">Please allow camera access when prompted</p>
+          <p className="text-lg">
+            {!agoraLoaded ? 'Loading video SDK...' : 'Starting camera...'}
+          </p>
+          <p className="text-sm text-gray-400 mt-2">
+            {!agoraLoaded ? 'Please wait...' : 'Please allow camera access when prompted'}
+          </p>
           <div className="mt-4 text-xs text-gray-500">
-            <p>Component: {componentMounted ? '✅ Mounted' : '⏳ Loading...'}</p>
-            <p>Video Element: {videoElementCreated ? '✅ Created' : '❌ Not Created'}</p>
-            <p>Video Ref: {videoElementRef.current ? '✅ Available' : '❌ Not Available'}</p>
-            <p>Container: {containerRef.current ? '✅ Available' : '❌ Not Available'}</p>
-            <p>Stream: {stream ? '✅ Available' : '⏳ Loading...'}</p>
+            <p>SDK: {agoraLoaded ? '✅ Loaded' : '⏳ Loading...'}</p>
+            <p>Client: {clientRef.current ? '✅ Created' : '❌ Not Created'}</p>
+            <p>Video Track: {localVideoTrackRef.current ? '✅ Created' : '❌ Not Created'}</p>
+            <p>Audio Track: {localAudioTrackRef.current ? '✅ Created' : '❌ Not Created'}</p>
             <p>Video Ready: {videoReady ? '✅ Yes' : '⏳ No'}</p>
-            <p>Retries: {retryCount.current}/{maxRetries}</p>
+            <p>Streaming: {isStreaming ? '✅ Yes' : '⏳ No'}</p>
           </div>
         </div>
       </div>
@@ -327,8 +303,13 @@ export default function AgoraVideoCall({ channelName, onEndCall, isHost = false 
   }
 
   return (
-    <div ref={containerRef} className="relative bg-gray-900 rounded-lg overflow-hidden">
-      {/* Video element will be added programmatically */}
+    <div className="relative bg-gray-900 rounded-lg overflow-hidden">
+      {/* Agora video container */}
+      <div 
+        ref={videoContainerRef} 
+        className="w-full h-96 bg-gray-800"
+        style={{ transform: 'scaleX(-1)' }} // Mirror the video
+      />
       
       {/* Overlay Controls */}
       <div className="absolute bottom-4 left-4 right-4 flex justify-between items-center">
@@ -337,7 +318,7 @@ export default function AgoraVideoCall({ channelName, onEndCall, isHost = false 
             🔴 LIVE
           </div>
           <div className="bg-black bg-opacity-50 text-white px-3 py-1 rounded-full text-sm">
-            👥 {viewerCount} viewers
+            👥 0 viewers
           </div>
         </div>
         
@@ -366,12 +347,10 @@ export default function AgoraVideoCall({ channelName, onEndCall, isHost = false 
         <div>Status: {isStreaming ? 'Streaming' : 'Not Streaming'}</div>
         <div>Camera: {cameraPermission}</div>
         <div>Video: {videoReady ? 'Ready' : 'Not Ready'}</div>
-        <div>Element: {videoElementCreated ? 'Created' : 'Not Created'}</div>
-        <div>Ref: {videoElementRef.current ? 'Yes' : 'No'}</div>
-        <div>Stream: {stream ? 'Active' : 'None'}</div>
+        <div>Client: {clientRef.current ? 'Yes' : 'No'}</div>
+        <div>Video Track: {localVideoTrackRef.current ? 'Yes' : 'No'}</div>
+        <div>Audio Track: {localAudioTrackRef.current ? 'Yes' : 'No'}</div>
         <div>Connecting: {isConnecting ? 'Yes' : 'No'}</div>
-        <div>Mounted: {componentMounted ? 'Yes' : 'No'}</div>
-        <div>Retries: {retryCount.current}/{maxRetries}</div>
       </div>
     </div>
   )
