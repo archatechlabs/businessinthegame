@@ -144,87 +144,6 @@ export default function AgoraVideoCall({ channelName, onEndCall, isHost = false 
     }
   }, [channelName, userProfile])
 
-  // Direct stream attachment function - FIXED to use current ref values
-  const attachStreamToVideo = useCallback((mediaStream: MediaStream) => {
-    console.log('🎯 Attempting to attach stream to video element (attempt', retryCount.current + 1, ')')
-    
-    // Get current ref values (not captured in closure)
-    const currentVideoRef = videoElementRef.current
-    const currentContainerRef = containerRef.current
-    
-    console.log('🔍 Current refs:', {
-      videoRef: !!currentVideoRef,
-      containerRef: !!currentContainerRef,
-      videoElementCreated
-    })
-    
-    // Try multiple ways to find the video element
-    let video = currentVideoRef
-    
-    if (!video) {
-      // Try to find by ID
-      video = document.getElementById('agora-video-element') as HTMLVideoElement
-      console.log('🔍 Found video by ID:', !!video)
-    }
-    
-    if (!video) {
-      // Try to find in container
-      video = currentContainerRef?.querySelector('video') as HTMLVideoElement
-      console.log('🔍 Found video in container:', !!video)
-    }
-    
-    if (!video) {
-      // Try to find any video element
-      const videos = document.querySelectorAll('video')
-      console.log('🔍 Found video elements in document:', videos.length)
-      if (videos.length > 0) {
-        video = videos[0] as HTMLVideoElement
-        console.log('🔍 Using first video element found')
-      }
-    }
-    
-    console.log('🔍 Final video element found:', !!video)
-    
-    if (video) {
-      console.log('✅ Video element found, attaching stream')
-      video.srcObject = mediaStream
-      
-      video.play().then(() => {
-        console.log('▶️ Video started playing')
-        setIsStreaming(true)
-        setVideoReady(true)
-        setIsConnecting(false)
-        retryCount.current = 0 // Reset retry count on success
-      }).catch(err => {
-        console.error('❌ Error playing video:', err)
-        setError('Failed to play video stream')
-        setIsConnecting(false)
-      })
-    } else {
-      retryCount.current++
-      if (retryCount.current < maxRetries) {
-        console.log('❌ Video element not found, retrying in 100ms (attempt', retryCount.current, '/', maxRetries, ')')
-        // Retry after a short delay
-        setTimeout(() => {
-          attachStreamToVideo(mediaStream)
-        }, 100)
-      } else {
-        console.error('❌ Video element not found after maximum retries')
-        setError('Video element not found. Please refresh and try again.')
-        setIsConnecting(false)
-      }
-    }
-  }, [videoElementCreated])
-
-  // Set up video element when stream is available
-  useEffect(() => {
-    if (stream && componentMounted) {
-      console.log('🎯 Stream available and component mounted, attempting to attach to video')
-      retryCount.current = 0 // Reset retry count
-      attachStreamToVideo(stream)
-    }
-  }, [stream, componentMounted, attachStreamToVideo])
-
   // Initialize camera on mount with delay
   useEffect(() => {
     if (componentMounted) {
@@ -237,6 +156,87 @@ export default function AgoraVideoCall({ channelName, onEndCall, isHost = false 
       }
     }
   }, [componentMounted, initCamera])
+
+  // Set up video element when stream is available - FIXED APPROACH
+  useEffect(() => {
+    if (stream && componentMounted) {
+      console.log('🎯 Stream available and component mounted, attempting to attach to video')
+      retryCount.current = 0 // Reset retry count
+      
+      // Use a direct function instead of useCallback to avoid closure issues
+      const attachStream = () => {
+        console.log('🎯 Attempting to attach stream to video element (attempt', retryCount.current + 1, ')')
+        
+        // Get current ref values directly
+        const currentVideoRef = videoElementRef.current
+        const currentContainerRef = containerRef.current
+        
+        console.log('🔍 Current refs:', {
+          videoRef: !!currentVideoRef,
+          containerRef: !!currentContainerRef,
+          videoElementCreated
+        })
+        
+        // Try multiple ways to find the video element
+        let video = currentVideoRef
+        
+        if (!video) {
+          // Try to find by ID
+          video = document.getElementById('agora-video-element') as HTMLVideoElement
+          console.log('🔍 Found video by ID:', !!video)
+        }
+        
+        if (!video) {
+          // Try to find in container
+          video = currentContainerRef?.querySelector('video') as HTMLVideoElement
+          console.log('🔍 Found video in container:', !!video)
+        }
+        
+        if (!video) {
+          // Try to find any video element
+          const videos = document.querySelectorAll('video')
+          console.log('🔍 Found video elements in document:', videos.length)
+          if (videos.length > 0) {
+            video = videos[0] as HTMLVideoElement
+            console.log('🔍 Using first video element found')
+          }
+        }
+        
+        console.log('🔍 Final video element found:', !!video)
+        
+        if (video) {
+          console.log('✅ Video element found, attaching stream')
+          video.srcObject = stream
+          
+          video.play().then(() => {
+            console.log('▶️ Video started playing')
+            setIsStreaming(true)
+            setVideoReady(true)
+            setIsConnecting(false)
+            retryCount.current = 0 // Reset retry count on success
+          }).catch(err => {
+            console.error('❌ Error playing video:', err)
+            setError('Failed to play video stream')
+            setIsConnecting(false)
+          })
+        } else {
+          retryCount.current++
+          if (retryCount.current < maxRetries) {
+            console.log('❌ Video element not found, retrying in 100ms (attempt', retryCount.current, '/', maxRetries, ')')
+            // Retry after a short delay
+            setTimeout(attachStream, 100)
+          } else {
+            console.error('❌ Video element not found after maximum retries')
+            setError('Video element not found. Please refresh and try again.')
+            setIsConnecting(false)
+          }
+        }
+      }
+      
+      // Start the attachment process
+      attachStream()
+    }
+  }, [stream, componentMounted, videoElementCreated, maxRetries])
 
   // Cleanup on unmount
   useEffect(() => {
