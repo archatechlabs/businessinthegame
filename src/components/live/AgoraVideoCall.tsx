@@ -18,9 +18,18 @@ export default function AgoraVideoCall({ channelName, onEndCall, isHost = false 
   const [cameraPermission, setCameraPermission] = useState<'granted' | 'denied' | 'prompt' | 'unknown'>('unknown')
   const [videoReady, setVideoReady] = useState(false)
   const [stream, setStream] = useState<MediaStream | null>(null)
+  const [componentMounted, setComponentMounted] = useState(false)
   
   const videoRef = useRef<HTMLVideoElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+  const retryCount = useRef(0)
+  const maxRetries = 50 // 5 seconds of retries
+
+  // Mark component as mounted
+  useEffect(() => {
+    setComponentMounted(true)
+    console.log('🎬 AgoraVideoCall component mounted')
+  }, [])
 
   // Initialize camera when component mounts
   const initCamera = useCallback(async () => {
@@ -80,14 +89,15 @@ export default function AgoraVideoCall({ channelName, onEndCall, isHost = false 
     }
   }, [channelName, userProfile])
 
-  // Direct stream attachment function
+  // Direct stream attachment function with retry limit
   const attachStreamToVideo = useCallback((mediaStream: MediaStream) => {
-    console.log('🎯 Attempting to attach stream to video element')
+    console.log('🎯 Attempting to attach stream to video element (attempt', retryCount.current + 1, ')')
     
     // Use a more aggressive approach to find the video element
     const findVideoElement = () => {
       // Try multiple ways to find the video element
       if (videoRef.current) {
+        console.log('📹 Found video element via videoRef.current')
         return videoRef.current
       }
       
@@ -95,7 +105,7 @@ export default function AgoraVideoCall({ channelName, onEndCall, isHost = false 
       if (containerRef.current) {
         const video = containerRef.current.querySelector('video')
         if (video) {
-          console.log('📹 Found video element via querySelector')
+          console.log('📹 Found video element via containerRef.querySelector')
           return video
         }
       }
@@ -121,38 +131,49 @@ export default function AgoraVideoCall({ channelName, onEndCall, isHost = false 
         setIsStreaming(true)
         setVideoReady(true)
         setIsConnecting(false)
+        retryCount.current = 0 // Reset retry count on success
       }).catch(err => {
         console.error('❌ Error playing video:', err)
         setError('Failed to play video stream')
         setIsConnecting(false)
       })
     } else {
-      console.log('❌ Video element not found, retrying in 100ms')
-      // Retry after a short delay
-      setTimeout(() => {
-        attachStreamToVideo(mediaStream)
-      }, 100)
+      retryCount.current++
+      if (retryCount.current < maxRetries) {
+        console.log('❌ Video element not found, retrying in 100ms (attempt', retryCount.current, '/', maxRetries, ')')
+        // Retry after a short delay
+        setTimeout(() => {
+          attachStreamToVideo(mediaStream)
+        }, 100)
+      } else {
+        console.error('❌ Video element not found after maximum retries')
+        setError('Video element not found. Please refresh and try again.')
+        setIsConnecting(false)
+      }
     }
   }, [])
 
   // Set up video element when stream is available
   useEffect(() => {
-    if (stream) {
-      console.log('🎯 Stream available, attempting to attach to video')
+    if (stream && componentMounted) {
+      console.log('🎯 Stream available and component mounted, attempting to attach to video')
+      retryCount.current = 0 // Reset retry count
       attachStreamToVideo(stream)
     }
-  }, [stream, attachStreamToVideo])
+  }, [stream, componentMounted, attachStreamToVideo])
 
-  // Initialize camera on mount
+  // Initialize camera on mount with delay
   useEffect(() => {
-    const timer = setTimeout(() => {
-      initCamera()
-    }, 1000) // Wait 1 second for component to fully render
+    if (componentMounted) {
+      const timer = setTimeout(() => {
+        initCamera()
+      }, 500) // Wait 500ms for component to fully render
 
-    return () => {
-      clearTimeout(timer)
+      return () => {
+        clearTimeout(timer)
+      }
     }
-  }, [initCamera])
+  }, [componentMounted, initCamera])
 
   // Cleanup on unmount
   useEffect(() => {
@@ -225,9 +246,11 @@ export default function AgoraVideoCall({ channelName, onEndCall, isHost = false 
           <p className="text-lg">Starting camera...</p>
           <p className="text-sm text-gray-400 mt-2">Please allow camera access when prompted</p>
           <div className="mt-4 text-xs text-gray-500">
+            <p>Component: {componentMounted ? '✅ Mounted' : '⏳ Loading...'}</p>
             <p>Stream: {stream ? '✅ Available' : '⏳ Loading...'}</p>
             <p>Video Element: {videoRef.current ? '✅ Ready' : '⏳ Loading...'}</p>
             <p>Video Ready: {videoReady ? '✅ Yes' : '⏳ No'}</p>
+            <p>Retries: {retryCount.current}/{maxRetries}</p>
           </div>
         </div>
       </div>
@@ -291,6 +314,8 @@ export default function AgoraVideoCall({ channelName, onEndCall, isHost = false 
         <div>Element: {videoRef.current ? 'Found' : 'Not Found'}</div>
         <div>Stream: {stream ? 'Active' : 'None'}</div>
         <div>Connecting: {isConnecting ? 'Yes' : 'No'}</div>
+        <div>Mounted: {componentMounted ? 'Yes' : 'No'}</div>
+        <div>Retries: {retryCount.current}/{maxRetries}</div>
       </div>
     </div>
   )
