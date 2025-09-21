@@ -19,6 +19,7 @@ export default function AgoraVideoCall({ channelName, onEndCall, isHost = false 
   const [videoReady, setVideoReady] = useState(false)
   const [stream, setStream] = useState<MediaStream | null>(null)
   const [componentMounted, setComponentMounted] = useState(false)
+  const [videoElementCreated, setVideoElementCreated] = useState(false)
   
   const containerRef = useRef<HTMLDivElement>(null)
   const videoElementRef = useRef<HTMLVideoElement | null>(null)
@@ -28,16 +29,18 @@ export default function AgoraVideoCall({ channelName, onEndCall, isHost = false 
   // Create video element programmatically
   const createVideoElement = useCallback(() => {
     if (videoElementRef.current) {
+      console.log('🎬 Video element already exists')
       return videoElementRef.current
     }
 
-    console.log('🎬 Creating video element programmatically')
+    console.log('�� Creating video element programmatically')
     const video = document.createElement('video')
     video.autoplay = true
     video.muted = true
     video.playsInline = true
     video.className = 'w-full h-96 object-cover'
     video.style.transform = 'scaleX(-1)' // Mirror the video
+    video.id = 'agora-video-element' // Add unique ID for debugging
     
     // Add event listeners
     video.addEventListener('loadedmetadata', () => console.log('📹 Video metadata loaded'))
@@ -48,29 +51,39 @@ export default function AgoraVideoCall({ channelName, onEndCall, isHost = false 
     video.addEventListener('error', (e) => console.error('❌ Video error:', e))
 
     videoElementRef.current = video
+    setVideoElementCreated(true)
+    console.log('✅ Video element created and stored in ref')
     return video
   }, [])
 
-  // Mark component as mounted
+  // Mark component as mounted and create video element
   useEffect(() => {
-    setComponentMounted(true)
     console.log('🎬 AgoraVideoCall component mounted')
+    setComponentMounted(true)
     
     // Create video element immediately
     const video = createVideoElement()
+    console.log('🎬 Video element created:', video)
     
     // Add video element to container when container is available
     const addVideoToContainer = () => {
       if (containerRef.current && videoElementRef.current) {
         console.log('📹 Adding video element to container')
         containerRef.current.appendChild(videoElementRef.current)
+        console.log('✅ Video element added to container')
+        console.log('📹 Container children:', containerRef.current.children.length)
+        console.log('📹 Video element in DOM:', document.getElementById('agora-video-element'))
       } else {
-        console.log('⏳ Waiting for container to be available')
+        console.log('⏳ Waiting for container to be available', {
+          container: !!containerRef.current,
+          video: !!videoElementRef.current
+        })
         setTimeout(addVideoToContainer, 100)
       }
     }
     
-    addVideoToContainer()
+    // Wait a bit for the container to be rendered
+    setTimeout(addVideoToContainer, 200)
   }, [createVideoElement])
 
   // Initialize camera when component mounts
@@ -131,11 +144,47 @@ export default function AgoraVideoCall({ channelName, onEndCall, isHost = false 
     }
   }, [channelName, userProfile])
 
-  // Direct stream attachment function
+  // Direct stream attachment function - FIXED to use current ref values
   const attachStreamToVideo = useCallback((mediaStream: MediaStream) => {
     console.log('🎯 Attempting to attach stream to video element (attempt', retryCount.current + 1, ')')
     
-    const video = videoElementRef.current
+    // Get current ref values (not captured in closure)
+    const currentVideoRef = videoElementRef.current
+    const currentContainerRef = containerRef.current
+    
+    console.log('🔍 Current refs:', {
+      videoRef: !!currentVideoRef,
+      containerRef: !!currentContainerRef,
+      videoElementCreated
+    })
+    
+    // Try multiple ways to find the video element
+    let video = currentVideoRef
+    
+    if (!video) {
+      // Try to find by ID
+      video = document.getElementById('agora-video-element') as HTMLVideoElement
+      console.log('🔍 Found video by ID:', !!video)
+    }
+    
+    if (!video) {
+      // Try to find in container
+      video = currentContainerRef?.querySelector('video') as HTMLVideoElement
+      console.log('🔍 Found video in container:', !!video)
+    }
+    
+    if (!video) {
+      // Try to find any video element
+      const videos = document.querySelectorAll('video')
+      console.log('🔍 Found video elements in document:', videos.length)
+      if (videos.length > 0) {
+        video = videos[0] as HTMLVideoElement
+        console.log('🔍 Using first video element found')
+      }
+    }
+    
+    console.log('🔍 Final video element found:', !!video)
+    
     if (video) {
       console.log('✅ Video element found, attaching stream')
       video.srcObject = mediaStream
@@ -165,7 +214,7 @@ export default function AgoraVideoCall({ channelName, onEndCall, isHost = false 
         setIsConnecting(false)
       }
     }
-  }, [])
+  }, [videoElementCreated])
 
   // Set up video element when stream is available
   useEffect(() => {
@@ -181,7 +230,7 @@ export default function AgoraVideoCall({ channelName, onEndCall, isHost = false 
     if (componentMounted) {
       const timer = setTimeout(() => {
         initCamera()
-      }, 500) // Wait 500ms for component to fully render
+      }, 1000) // Wait 1 second for component to fully render
 
       return () => {
         clearTimeout(timer)
@@ -265,7 +314,9 @@ export default function AgoraVideoCall({ channelName, onEndCall, isHost = false 
           <p className="text-sm text-gray-400 mt-2">Please allow camera access when prompted</p>
           <div className="mt-4 text-xs text-gray-500">
             <p>Component: {componentMounted ? '✅ Mounted' : '⏳ Loading...'}</p>
-            <p>Video Element: {videoElementRef.current ? '✅ Created' : '❌ Not Created'}</p>
+            <p>Video Element: {videoElementCreated ? '✅ Created' : '❌ Not Created'}</p>
+            <p>Video Ref: {videoElementRef.current ? '✅ Available' : '❌ Not Available'}</p>
+            <p>Container: {containerRef.current ? '✅ Available' : '❌ Not Available'}</p>
             <p>Stream: {stream ? '✅ Available' : '⏳ Loading...'}</p>
             <p>Video Ready: {videoReady ? '✅ Yes' : '⏳ No'}</p>
             <p>Retries: {retryCount.current}/{maxRetries}</p>
@@ -315,7 +366,8 @@ export default function AgoraVideoCall({ channelName, onEndCall, isHost = false 
         <div>Status: {isStreaming ? 'Streaming' : 'Not Streaming'}</div>
         <div>Camera: {cameraPermission}</div>
         <div>Video: {videoReady ? 'Ready' : 'Not Ready'}</div>
-        <div>Element: {videoElementRef.current ? 'Created' : 'Not Created'}</div>
+        <div>Element: {videoElementCreated ? 'Created' : 'Not Created'}</div>
+        <div>Ref: {videoElementRef.current ? 'Yes' : 'No'}</div>
         <div>Stream: {stream ? 'Active' : 'None'}</div>
         <div>Connecting: {isConnecting ? 'Yes' : 'No'}</div>
         <div>Mounted: {componentMounted ? 'Yes' : 'No'}</div>
