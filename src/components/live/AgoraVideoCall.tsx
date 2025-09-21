@@ -16,11 +16,17 @@ export default function AgoraVideoCall({ channelName, onEndCall, isHost = false 
   const [error, setError] = useState<string | null>(null)
   const [viewerCount, setViewerCount] = useState(0)
   const [cameraPermission, setCameraPermission] = useState<'granted' | 'denied' | 'prompt' | 'unknown'>('unknown')
+  const [videoReady, setVideoReady] = useState(false)
   
   const videoRef = useRef<HTMLVideoElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
+  const initAttempted = useRef(false)
 
+  // Initialize camera when component mounts and video element is ready
   useEffect(() => {
+    if (initAttempted.current) return
+    initAttempted.current = true
+
     const initCamera = async () => {
       try {
         console.log('🎥 Starting camera initialization...')
@@ -59,7 +65,7 @@ export default function AgoraVideoCall({ channelName, onEndCall, isHost = false 
         const waitForVideoElement = () => {
           return new Promise<HTMLVideoElement>((resolve, reject) => {
             let attempts = 0
-            const maxAttempts = 50 // 5 seconds max wait
+            const maxAttempts = 100 // 10 seconds max wait
             
             const checkVideo = () => {
               attempts++
@@ -88,6 +94,7 @@ export default function AgoraVideoCall({ channelName, onEndCall, isHost = false 
           console.log('▶️ Video started playing')
           setIsStreaming(true)
           setIsConnecting(false)
+          setVideoReady(true)
         }).catch(err => {
           console.error('❌ Error playing video:', err)
           setError('Failed to play video stream')
@@ -122,16 +129,31 @@ export default function AgoraVideoCall({ channelName, onEndCall, isHost = false 
       }
     }
 
-    // Add a small delay to ensure the component is fully rendered
+    // Add a longer delay to ensure the component is fully rendered
     const timer = setTimeout(() => {
       initCamera()
-    }, 100)
+    }, 500)
 
     return () => {
       clearTimeout(timer)
       cleanup()
     }
   }, [channelName, user, userProfile])
+
+  // Additional effect to handle video element when it becomes available
+  useEffect(() => {
+    if (videoRef.current && streamRef.current && !videoReady) {
+      console.log('🎯 Video element became available, setting up stream')
+      videoRef.current.srcObject = streamRef.current
+      videoRef.current.play().then(() => {
+        console.log('▶️ Video started playing (delayed setup)')
+        setIsStreaming(true)
+        setVideoReady(true)
+      }).catch(err => {
+        console.error('❌ Error playing video (delayed setup):', err)
+      })
+    }
+  }, [videoReady])
 
   const cleanup = async () => {
     try {
@@ -142,6 +164,7 @@ export default function AgoraVideoCall({ channelName, onEndCall, isHost = false 
         streamRef.current = null
       }
       setIsStreaming(false)
+      setVideoReady(false)
     } catch (err) {
       console.error('Error during cleanup:', err)
     }
@@ -256,7 +279,8 @@ export default function AgoraVideoCall({ channelName, onEndCall, isHost = false 
       <div className="absolute top-4 right-4 bg-black bg-opacity-50 text-white p-2 rounded text-xs">
         <div>Status: {isStreaming ? 'Streaming' : 'Not Streaming'}</div>
         <div>Camera: {cameraPermission}</div>
-        <div>Video: {videoRef.current ? 'Ready' : 'Not Ready'}</div>
+        <div>Video: {videoReady ? 'Ready' : 'Not Ready'}</div>
+        <div>Element: {videoRef.current ? 'Found' : 'Not Found'}</div>
       </div>
     </div>
   )
