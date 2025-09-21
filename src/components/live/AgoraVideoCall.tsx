@@ -19,6 +19,7 @@ export default function AgoraVideoCall({ channelName, onEndCall, isHost = false 
   const [videoReady, setVideoReady] = useState(false)
   const [stream, setStream] = useState<MediaStream | null>(null)
   const [componentMounted, setComponentMounted] = useState(false)
+  const [videoElementExists, setVideoElementExists] = useState(false)
   
   const videoRef = useRef<HTMLVideoElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -29,7 +30,39 @@ export default function AgoraVideoCall({ channelName, onEndCall, isHost = false 
   useEffect(() => {
     setComponentMounted(true)
     console.log('🎬 AgoraVideoCall component mounted')
+    
+    // Check if video element exists immediately
+    const checkVideoElement = () => {
+      const video = videoRef.current
+      if (video) {
+        console.log('📹 Video element found immediately after mount')
+        setVideoElementExists(true)
+      } else {
+        console.log('❌ Video element not found immediately after mount')
+        setVideoElementExists(false)
+      }
+    }
+    
+    // Check immediately and after a short delay
+    checkVideoElement()
+    setTimeout(checkVideoElement, 100)
+    setTimeout(checkVideoElement, 500)
   }, [])
+
+  // Monitor video element existence
+  useEffect(() => {
+    const checkVideo = () => {
+      const video = videoRef.current
+      const exists = !!video
+      if (exists !== videoElementExists) {
+        console.log('📹 Video element existence changed:', exists)
+        setVideoElementExists(exists)
+      }
+    }
+    
+    const interval = setInterval(checkVideo, 100)
+    return () => clearInterval(interval)
+  }, [videoElementExists])
 
   // Initialize camera when component mounts
   const initCamera = useCallback(async () => {
@@ -92,6 +125,11 @@ export default function AgoraVideoCall({ channelName, onEndCall, isHost = false 
   // Direct stream attachment function with retry limit
   const attachStreamToVideo = useCallback((mediaStream: MediaStream) => {
     console.log('🎯 Attempting to attach stream to video element (attempt', retryCount.current + 1, ')')
+    console.log('🔍 Video element debug info:')
+    console.log('  - videoRef.current:', videoRef.current)
+    console.log('  - containerRef.current:', containerRef.current)
+    console.log('  - videoElementExists:', videoElementExists)
+    console.log('  - componentMounted:', componentMounted)
     
     // Use a more aggressive approach to find the video element
     const findVideoElement = () => {
@@ -116,6 +154,13 @@ export default function AgoraVideoCall({ channelName, onEndCall, isHost = false 
         console.log('📹 Found video element via document.querySelector')
         return video
       }
+      
+      // Additional fallback: search for any video element with specific attributes
+      const videos = document.querySelectorAll('video')
+      console.log('📹 Found', videos.length, 'video elements in document')
+      videos.forEach((v, i) => {
+        console.log(`  Video ${i}:`, v, 'srcObject:', v.srcObject)
+      })
       
       return null
     }
@@ -151,7 +196,7 @@ export default function AgoraVideoCall({ channelName, onEndCall, isHost = false 
         setIsConnecting(false)
       }
     }
-  }, [])
+  }, [videoElementExists, componentMounted])
 
   // Set up video element when stream is available
   useEffect(() => {
@@ -188,7 +233,7 @@ export default function AgoraVideoCall({ channelName, onEndCall, isHost = false 
 
   const saveStreamToDatabase = async (channelName: string, streamerName: string) => {
     try {
-      console.log('💾 Stream saved to database:', { channelName, streamerName })
+      console.log('�� Stream saved to database:', { channelName, streamerName })
     } catch (err) {
       console.error('Error saving stream to database:', err)
     }
@@ -247,8 +292,8 @@ export default function AgoraVideoCall({ channelName, onEndCall, isHost = false 
           <p className="text-sm text-gray-400 mt-2">Please allow camera access when prompted</p>
           <div className="mt-4 text-xs text-gray-500">
             <p>Component: {componentMounted ? '✅ Mounted' : '⏳ Loading...'}</p>
+            <p>Video Element: {videoElementExists ? '✅ Exists' : '❌ Not Found'}</p>
             <p>Stream: {stream ? '✅ Available' : '⏳ Loading...'}</p>
-            <p>Video Element: {videoRef.current ? '✅ Ready' : '⏳ Loading...'}</p>
             <p>Video Ready: {videoReady ? '✅ Yes' : '⏳ No'}</p>
             <p>Retries: {retryCount.current}/{maxRetries}</p>
           </div>
@@ -267,7 +312,7 @@ export default function AgoraVideoCall({ channelName, onEndCall, isHost = false 
         playsInline
         className="w-full h-96 object-cover"
         style={{ transform: 'scaleX(-1)' }} // Mirror the video
-        onLoadedMetadata={() => console.log('📹 Video metadata loaded')}
+        onLoadedMetadata={() => console.log('�� Video metadata loaded')}
         onCanPlay={() => console.log('▶️ Video can play')}
         onPlay={() => console.log('▶️ Video is playing')}
         onError={(e) => console.error('❌ Video error:', e)}
@@ -311,7 +356,7 @@ export default function AgoraVideoCall({ channelName, onEndCall, isHost = false 
         <div>Status: {isStreaming ? 'Streaming' : 'Not Streaming'}</div>
         <div>Camera: {cameraPermission}</div>
         <div>Video: {videoReady ? 'Ready' : 'Not Ready'}</div>
-        <div>Element: {videoRef.current ? 'Found' : 'Not Found'}</div>
+        <div>Element: {videoElementExists ? 'Found' : 'Not Found'}</div>
         <div>Stream: {stream ? 'Active' : 'None'}</div>
         <div>Connecting: {isConnecting ? 'Yes' : 'No'}</div>
         <div>Mounted: {componentMounted ? 'Yes' : 'No'}</div>
