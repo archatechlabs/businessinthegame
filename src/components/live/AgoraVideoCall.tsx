@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 
 interface AgoraVideoCallProps {
@@ -17,162 +17,111 @@ export default function AgoraVideoCall({ channelName, onEndCall, isHost = false 
   const [viewerCount, setViewerCount] = useState(0)
   const [cameraPermission, setCameraPermission] = useState<'granted' | 'denied' | 'prompt' | 'unknown'>('unknown')
   const [videoReady, setVideoReady] = useState(false)
+  const [stream, setStream] = useState<MediaStream | null>(null)
   
   const videoRef = useRef<HTMLVideoElement>(null)
-  const streamRef = useRef<MediaStream | null>(null)
-  const initAttempted = useRef(false)
+  const containerRef = useRef<HTMLDivElement>(null)
 
-  // Initialize camera when component mounts and video element is ready
-  useEffect(() => {
-    if (initAttempted.current) return
-    initAttempted.current = true
+  // Initialize camera when component mounts
+  const initCamera = useCallback(async () => {
+    try {
+      console.log('🎥 Starting camera initialization...')
+      setIsConnecting(true)
+      setError(null)
 
-    const initCamera = async () => {
-      try {
-        console.log('🎥 Starting camera initialization...')
-        setIsConnecting(true)
-        setError(null)
-
-        // Check if we're in a secure context
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-          throw new Error('Camera access not supported in this browser')
-        }
-
-        // Check camera permissions first
-        try {
-          const permission = await navigator.permissions.query({ name: 'camera' as PermissionName })
-          setCameraPermission(permission.state)
-          console.log('📷 Camera permission state:', permission.state)
-        } catch (permError) {
-          console.log('📷 Could not check camera permission:', permError)
-        }
-
-        // Get user media with better error handling
-        console.log('🎥 Requesting camera access...')
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            width: { ideal: 1280 },
-            height: { ideal: 720 },
-            frameRate: { ideal: 30 }
-          },
-          audio: true
-        })
-
-        console.log('✅ Camera access granted!', stream)
-        streamRef.current = stream
-
-        // Wait for video element to be available with retry mechanism
-        const waitForVideoElement = () => {
-          return new Promise<HTMLVideoElement>((resolve, reject) => {
-            let attempts = 0
-            const maxAttempts = 100 // 10 seconds max wait
-            
-            const checkVideo = () => {
-              attempts++
-              console.log(`🔍 Checking for video element (attempt ${attempts}/${maxAttempts})`)
-              
-              if (videoRef.current) {
-                console.log('✅ Video element found!')
-                resolve(videoRef.current)
-              } else if (attempts >= maxAttempts) {
-                reject(new Error('Video element not found after maximum attempts'))
-              } else {
-                setTimeout(checkVideo, 100) // Check every 100ms
-              }
-            }
-            
-            checkVideo()
-          })
-        }
-
-        // Wait for video element and then set up the stream
-        const videoElement = await waitForVideoElement()
-        
-        // Display the stream in the video element
-        videoElement.srcObject = stream
-        videoElement.play().then(() => {
-          console.log('▶️ Video started playing')
-          setIsStreaming(true)
-          setIsConnecting(false)
-          setVideoReady(true)
-        }).catch(err => {
-          console.error('❌ Error playing video:', err)
-          setError('Failed to play video stream')
-          setIsConnecting(false)
-        })
-
-        // In a real implementation, you would:
-        // 1. Initialize Agora RTC client
-        // 2. Join the channel
-        // 3. Publish the local stream
-
-        // Save stream to database
-        await saveStreamToDatabase(channelName, userProfile?.username || 'Unknown')
-
-      } catch (err) {
-        console.error('❌ Error initializing camera:', err)
-        if (err instanceof Error) {
-          if (err.name === 'NotAllowedError') {
-            setError('Camera access denied. Please allow camera access and try again.')
-            setCameraPermission('denied')
-          } else if (err.name === 'NotFoundError') {
-            setError('No camera found. Please connect a camera and try again.')
-          } else if (err.name === 'NotReadableError') {
-            setError('Camera is being used by another application. Please close other apps and try again.')
-          } else {
-            setError(err.message)
-          }
-        } else {
-          setError('Failed to start stream')
-        }
-        setIsConnecting(false)
+      // Check if we're in a secure context
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('Camera access not supported in this browser')
       }
-    }
 
-    // Add a longer delay to ensure the component is fully rendered
+      // Check camera permissions first
+      try {
+        const permission = await navigator.permissions.query({ name: 'camera' as PermissionName })
+        setCameraPermission(permission.state)
+        console.log('📷 Camera permission state:', permission.state)
+      } catch (permError) {
+        console.log('📷 Could not check camera permission:', permError)
+      }
+
+      // Get user media
+      console.log('🎥 Requesting camera access...')
+      const mediaStream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+          frameRate: { ideal: 30 }
+        },
+        audio: true
+      })
+
+      console.log('✅ Camera access granted!', mediaStream)
+      setStream(mediaStream)
+
+      // Save stream to database
+      await saveStreamToDatabase(channelName, userProfile?.username || 'Unknown')
+
+    } catch (err) {
+      console.error('❌ Error initializing camera:', err)
+      if (err instanceof Error) {
+        if (err.name === 'NotAllowedError') {
+          setError('Camera access denied. Please allow camera access and try again.')
+          setCameraPermission('denied')
+        } else if (err.name === 'NotFoundError') {
+          setError('No camera found. Please connect a camera and try again.')
+        } else if (err.name === 'NotReadableError') {
+          setError('Camera is being used by another application. Please close other apps and try again.')
+        } else {
+          setError(err.message)
+        }
+      } else {
+        setError('Failed to start stream')
+      }
+      setIsConnecting(false)
+    }
+  }, [channelName, userProfile])
+
+  // Set up video element when stream is available
+  useEffect(() => {
+    if (stream && videoRef.current) {
+      console.log('🎯 Setting up video element with stream')
+      videoRef.current.srcObject = stream
+      videoRef.current.play().then(() => {
+        console.log('▶️ Video started playing')
+        setIsStreaming(true)
+        setVideoReady(true)
+        setIsConnecting(false)
+      }).catch(err => {
+        console.error('❌ Error playing video:', err)
+        setError('Failed to play video stream')
+        setIsConnecting(false)
+      })
+    }
+  }, [stream])
+
+  // Initialize camera on mount
+  useEffect(() => {
     const timer = setTimeout(() => {
       initCamera()
-    }, 500)
+    }, 1000) // Wait 1 second for component to fully render
 
     return () => {
       clearTimeout(timer)
-      cleanup()
     }
-  }, [channelName, user, userProfile])
+  }, [initCamera])
 
-  // Additional effect to handle video element when it becomes available
+  // Cleanup on unmount
   useEffect(() => {
-    if (videoRef.current && streamRef.current && !videoReady) {
-      console.log('🎯 Video element became available, setting up stream')
-      videoRef.current.srcObject = streamRef.current
-      videoRef.current.play().then(() => {
-        console.log('▶️ Video started playing (delayed setup)')
-        setIsStreaming(true)
-        setVideoReady(true)
-      }).catch(err => {
-        console.error('❌ Error playing video (delayed setup):', err)
-      })
-    }
-  }, [videoReady])
-
-  const cleanup = async () => {
-    try {
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => {
+    return () => {
+      if (stream) {
+        stream.getTracks().forEach(track => {
           track.stop()
         })
-        streamRef.current = null
       }
-      setIsStreaming(false)
-      setVideoReady(false)
-    } catch (err) {
-      console.error('Error during cleanup:', err)
     }
-  }
+  }, [stream])
 
   const saveStreamToDatabase = async (channelName: string, streamerName: string) => {
     try {
-      // This would save the stream to your database
       console.log('💾 Stream saved to database:', { channelName, streamerName })
     } catch (err) {
       console.error('Error saving stream to database:', err)
@@ -181,7 +130,14 @@ export default function AgoraVideoCall({ channelName, onEndCall, isHost = false 
 
   const stopStreaming = async () => {
     try {
-      await cleanup()
+      if (stream) {
+        stream.getTracks().forEach(track => {
+          track.stop()
+        })
+        setStream(null)
+      }
+      setIsStreaming(false)
+      setVideoReady(false)
       onEndCall()
     } catch (err) {
       console.error('Error stopping stream:', err)
@@ -229,8 +185,8 @@ export default function AgoraVideoCall({ channelName, onEndCall, isHost = false 
   }
 
   return (
-    <div className="relative bg-gray-900 rounded-lg overflow-hidden">
-      {/* Video Element */}
+    <div ref={containerRef} className="relative bg-gray-900 rounded-lg overflow-hidden">
+      {/* Video Element - Always render this */}
       <video
         ref={videoRef}
         autoPlay
@@ -281,6 +237,7 @@ export default function AgoraVideoCall({ channelName, onEndCall, isHost = false 
         <div>Camera: {cameraPermission}</div>
         <div>Video: {videoReady ? 'Ready' : 'Not Ready'}</div>
         <div>Element: {videoRef.current ? 'Found' : 'Not Found'}</div>
+        <div>Stream: {stream ? 'Active' : 'None'}</div>
       </div>
     </div>
   )
