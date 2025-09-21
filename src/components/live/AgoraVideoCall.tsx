@@ -21,6 +21,7 @@ export default function AgoraVideoCall({ channelName, onEndCall, isHost = false 
   
   const videoRef = useRef<HTMLVideoElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+  const streamAttached = useRef(false)
 
   // Initialize camera when component mounts
   const initCamera = useCallback(async () => {
@@ -82,12 +83,13 @@ export default function AgoraVideoCall({ channelName, onEndCall, isHost = false 
 
   // Set up video element when stream is available
   useEffect(() => {
-    if (stream && videoRef.current) {
+    if (stream && videoRef.current && !streamAttached.current) {
       console.log('🎯 Setting up video element with stream')
       console.log('📹 Video element:', videoRef.current)
       console.log('📹 Stream:', stream)
       
       videoRef.current.srcObject = stream
+      streamAttached.current = true
       
       videoRef.current.play().then(() => {
         console.log('▶️ Video started playing')
@@ -102,7 +104,8 @@ export default function AgoraVideoCall({ channelName, onEndCall, isHost = false 
     } else {
       console.log('⏳ Waiting for stream and video element...', {
         hasStream: !!stream,
-        hasVideoElement: !!videoRef.current
+        hasVideoElement: !!videoRef.current,
+        streamAttached: streamAttached.current
       })
     }
   }, [stream])
@@ -147,6 +150,7 @@ export default function AgoraVideoCall({ channelName, onEndCall, isHost = false 
       }
       setIsStreaming(false)
       setVideoReady(false)
+      streamAttached.current = false
       onEndCall()
     } catch (err) {
       console.error('Error stopping stream:', err)
@@ -191,6 +195,7 @@ export default function AgoraVideoCall({ channelName, onEndCall, isHost = false 
           <div className="mt-4 text-xs text-gray-500">
             <p>Stream: {stream ? '✅ Available' : '⏳ Loading...'}</p>
             <p>Video Element: {videoRef.current ? '✅ Ready' : '⏳ Loading...'}</p>
+            <p>Attached: {streamAttached.current ? '✅ Yes' : '⏳ No'}</p>
           </div>
         </div>
       </div>
@@ -211,7 +216,7 @@ export default function AgoraVideoCall({ channelName, onEndCall, isHost = false 
         onCanPlay={() => console.log('▶️ Video can play')}
         onPlay={() => console.log('▶️ Video is playing')}
         onError={(e) => console.error('❌ Video error:', e)}
-        onLoadStart={() => console.log('�� Video load started')}
+        onLoadStart={() => console.log('🔄 Video load started')}
         onLoadedData={() => console.log('📊 Video data loaded')}
       />
       
@@ -253,6 +258,7 @@ export default function AgoraVideoCall({ channelName, onEndCall, isHost = false 
         <div>Video: {videoReady ? 'Ready' : 'Not Ready'}</div>
         <div>Element: {videoRef.current ? 'Found' : 'Not Found'}</div>
         <div>Stream: {stream ? 'Active' : 'None'}</div>
+        <div>Attached: {streamAttached.current ? 'Yes' : 'No'}</div>
         <div>Connecting: {isConnecting ? 'Yes' : 'No'}</div>
       </div>
     </div>
