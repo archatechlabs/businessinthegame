@@ -55,23 +55,44 @@ export default function AgoraVideoCall({ channelName, onEndCall, isHost = false 
         console.log('✅ Camera access granted!', stream)
         streamRef.current = stream
 
-        // Display the stream in the video element
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream
-          videoRef.current.play().then(() => {
-            console.log('▶️ Video started playing')
-            setIsStreaming(true)
-            setIsConnecting(false)
-          }).catch(err => {
-            console.error('❌ Error playing video:', err)
-            setError('Failed to play video stream')
-            setIsConnecting(false)
+        // Wait for video element to be available with retry mechanism
+        const waitForVideoElement = () => {
+          return new Promise<HTMLVideoElement>((resolve, reject) => {
+            let attempts = 0
+            const maxAttempts = 50 // 5 seconds max wait
+            
+            const checkVideo = () => {
+              attempts++
+              console.log(`🔍 Checking for video element (attempt ${attempts}/${maxAttempts})`)
+              
+              if (videoRef.current) {
+                console.log('✅ Video element found!')
+                resolve(videoRef.current)
+              } else if (attempts >= maxAttempts) {
+                reject(new Error('Video element not found after maximum attempts'))
+              } else {
+                setTimeout(checkVideo, 100) // Check every 100ms
+              }
+            }
+            
+            checkVideo()
           })
-        } else {
-          console.error('❌ Video element not found')
-          setError('Video element not found')
-          setIsConnecting(false)
         }
+
+        // Wait for video element and then set up the stream
+        const videoElement = await waitForVideoElement()
+        
+        // Display the stream in the video element
+        videoElement.srcObject = stream
+        videoElement.play().then(() => {
+          console.log('▶️ Video started playing')
+          setIsStreaming(true)
+          setIsConnecting(false)
+        }).catch(err => {
+          console.error('❌ Error playing video:', err)
+          setError('Failed to play video stream')
+          setIsConnecting(false)
+        })
 
         // In a real implementation, you would:
         // 1. Initialize Agora RTC client
@@ -101,9 +122,13 @@ export default function AgoraVideoCall({ channelName, onEndCall, isHost = false 
       }
     }
 
-    initCamera()
+    // Add a small delay to ensure the component is fully rendered
+    const timer = setTimeout(() => {
+      initCamera()
+    }, 100)
 
     return () => {
+      clearTimeout(timer)
       cleanup()
     }
   }, [channelName, user, userProfile])
