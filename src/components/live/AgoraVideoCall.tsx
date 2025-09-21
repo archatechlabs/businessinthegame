@@ -2,10 +2,6 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
-import dynamic from 'next/dynamic'
-
-// Dynamically import Agora SDK to avoid SSR issues
-const AgoraRTC = dynamic(() => import('agora-rtc-sdk-ng'), { ssr: false })
 
 interface AgoraVideoCallProps {
   channelName: string
