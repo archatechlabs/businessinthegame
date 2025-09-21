@@ -84,7 +84,11 @@ export default function AgoraVideoCall({ channelName, onEndCall, isHost = false 
   useEffect(() => {
     if (stream && videoRef.current) {
       console.log('🎯 Setting up video element with stream')
+      console.log('📹 Video element:', videoRef.current)
+      console.log('📹 Stream:', stream)
+      
       videoRef.current.srcObject = stream
+      
       videoRef.current.play().then(() => {
         console.log('▶️ Video started playing')
         setIsStreaming(true)
@@ -94,6 +98,11 @@ export default function AgoraVideoCall({ channelName, onEndCall, isHost = false 
         console.error('❌ Error playing video:', err)
         setError('Failed to play video stream')
         setIsConnecting(false)
+      })
+    } else {
+      console.log('⏳ Waiting for stream and video element...', {
+        hasStream: !!stream,
+        hasVideoElement: !!videoRef.current
       })
     }
   }, [stream])
@@ -179,6 +188,10 @@ export default function AgoraVideoCall({ channelName, onEndCall, isHost = false 
           <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-white mx-auto mb-4"></div>
           <p className="text-lg">Starting camera...</p>
           <p className="text-sm text-gray-400 mt-2">Please allow camera access when prompted</p>
+          <div className="mt-4 text-xs text-gray-500">
+            <p>Stream: {stream ? '✅ Available' : '⏳ Loading...'}</p>
+            <p>Video Element: {videoRef.current ? '✅ Ready' : '⏳ Loading...'}</p>
+          </div>
         </div>
       </div>
     )
@@ -198,6 +211,8 @@ export default function AgoraVideoCall({ channelName, onEndCall, isHost = false 
         onCanPlay={() => console.log('▶️ Video can play')}
         onPlay={() => console.log('▶️ Video is playing')}
         onError={(e) => console.error('❌ Video error:', e)}
+        onLoadStart={() => console.log('�� Video load started')}
+        onLoadedData={() => console.log('📊 Video data loaded')}
       />
       
       {/* Overlay Controls */}
@@ -238,6 +253,7 @@ export default function AgoraVideoCall({ channelName, onEndCall, isHost = false 
         <div>Video: {videoReady ? 'Ready' : 'Not Ready'}</div>
         <div>Element: {videoRef.current ? 'Found' : 'Not Found'}</div>
         <div>Stream: {stream ? 'Active' : 'None'}</div>
+        <div>Connecting: {isConnecting ? 'Yes' : 'No'}</div>
       </div>
     </div>
   )
