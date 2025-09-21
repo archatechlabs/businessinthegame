@@ -17,6 +17,7 @@ export default function AgoraVideoCall({ channelName, onEndCall }: AgoraVideoCal
   const [cameraPermission, setCameraPermission] = useState<'granted' | 'denied' | 'prompt' | 'unknown'>('unknown')
   const [videoReady, setVideoReady] = useState(false)
   const [agoraLoaded, setAgoraLoaded] = useState(false)
+  const [connectionState, setConnectionState] = useState<string>('disconnected')
   
   const clientRef = useRef<unknown>(null)
   const localVideoTrackRef = useRef<unknown>(null)
@@ -54,6 +55,20 @@ export default function AgoraVideoCall({ channelName, onEndCall }: AgoraVideoCal
     const client = AgoraRTCModule.default.createClient({
       mode: 'rtc',
       codec: 'vp8'
+    })
+    
+    // Add event listeners for connection state
+    client.on('connection-state-change', (newState, reason) => {
+      console.log('🔗 Connection state changed:', newState, reason)
+      setConnectionState(newState)
+    })
+
+    client.on('user-joined', (user) => {
+      console.log('👤 User joined:', user.uid)
+    })
+
+    client.on('user-left', (user) => {
+      console.log('👤 User left:', user.uid)
     })
     
     clientRef.current = client
@@ -105,7 +120,10 @@ export default function AgoraVideoCall({ channelName, onEndCall }: AgoraVideoCal
       console.log('🎯 Joining Agora channel:', channelName)
       
       // Type assertion for Agora client methods
-      const agoraClient = client as { join: (appId: string, channel: string, token: string | null, uid: string | number | null) => Promise<void>; publish: (tracks: unknown[]) => Promise<void> }
+      const agoraClient = client as { 
+        join: (appId: string, channel: string, token: string | null, uid: string | number | null) => Promise<void>; 
+        publish: (tracks: unknown[]) => Promise<void> 
+      }
       
       // Join the channel
       await agoraClient.join(
@@ -296,6 +314,7 @@ export default function AgoraVideoCall({ channelName, onEndCall }: AgoraVideoCal
             <p>Audio Track: {localAudioTrackRef.current ? '✅ Created' : '❌ Not Created'}</p>
             <p>Video Ready: {videoReady ? '✅ Yes' : '⏳ No'}</p>
             <p>Streaming: {isStreaming ? '✅ Yes' : '⏳ No'}</p>
+            <p>Connection: {connectionState}</p>
           </div>
         </div>
       </div>
@@ -351,6 +370,10 @@ export default function AgoraVideoCall({ channelName, onEndCall }: AgoraVideoCal
         <div>Video Track: {localVideoTrackRef.current ? 'Yes' : 'No'}</div>
         <div>Audio Track: {localAudioTrackRef.current ? 'Yes' : 'No'}</div>
         <div>Connecting: {isConnecting ? 'Yes' : 'No'}</div>
+        <div>Connection: {connectionState}</div>
+        <div className="text-yellow-400 text-xs mt-1">
+          Note: Analytics blocked by browser
+        </div>
       </div>
     </div>
   )
