@@ -21,7 +21,6 @@ export default function AgoraVideoCall({ channelName, onEndCall, isHost = false 
   
   const videoRef = useRef<HTMLVideoElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
-  const streamAttached = useRef(false)
 
   // Initialize camera when component mounts
   const initCamera = useCallback(async () => {
@@ -81,17 +80,43 @@ export default function AgoraVideoCall({ channelName, onEndCall, isHost = false 
     }
   }, [channelName, userProfile])
 
-  // Set up video element when stream is available
-  useEffect(() => {
-    if (stream && videoRef.current && !streamAttached.current) {
-      console.log('🎯 Setting up video element with stream')
-      console.log('📹 Video element:', videoRef.current)
-      console.log('📹 Stream:', stream)
+  // Direct stream attachment function
+  const attachStreamToVideo = useCallback((mediaStream: MediaStream) => {
+    console.log('🎯 Attempting to attach stream to video element')
+    
+    // Use a more aggressive approach to find the video element
+    const findVideoElement = () => {
+      // Try multiple ways to find the video element
+      if (videoRef.current) {
+        return videoRef.current
+      }
       
-      videoRef.current.srcObject = stream
-      streamAttached.current = true
+      // Fallback: search in the container
+      if (containerRef.current) {
+        const video = containerRef.current.querySelector('video')
+        if (video) {
+          console.log('📹 Found video element via querySelector')
+          return video
+        }
+      }
       
-      videoRef.current.play().then(() => {
+      // Fallback: search in document
+      const video = document.querySelector('video')
+      if (video) {
+        console.log('📹 Found video element via document.querySelector')
+        return video
+      }
+      
+      return null
+    }
+
+    const videoElement = findVideoElement()
+    
+    if (videoElement) {
+      console.log('✅ Video element found, attaching stream')
+      videoElement.srcObject = mediaStream
+      
+      videoElement.play().then(() => {
         console.log('▶️ Video started playing')
         setIsStreaming(true)
         setVideoReady(true)
@@ -102,13 +127,21 @@ export default function AgoraVideoCall({ channelName, onEndCall, isHost = false 
         setIsConnecting(false)
       })
     } else {
-      console.log('⏳ Waiting for stream and video element...', {
-        hasStream: !!stream,
-        hasVideoElement: !!videoRef.current,
-        streamAttached: streamAttached.current
-      })
+      console.log('❌ Video element not found, retrying in 100ms')
+      // Retry after a short delay
+      setTimeout(() => {
+        attachStreamToVideo(mediaStream)
+      }, 100)
     }
-  }, [stream])
+  }, [])
+
+  // Set up video element when stream is available
+  useEffect(() => {
+    if (stream) {
+      console.log('🎯 Stream available, attempting to attach to video')
+      attachStreamToVideo(stream)
+    }
+  }, [stream, attachStreamToVideo])
 
   // Initialize camera on mount
   useEffect(() => {
@@ -150,7 +183,6 @@ export default function AgoraVideoCall({ channelName, onEndCall, isHost = false 
       }
       setIsStreaming(false)
       setVideoReady(false)
-      streamAttached.current = false
       onEndCall()
     } catch (err) {
       console.error('Error stopping stream:', err)
@@ -195,7 +227,7 @@ export default function AgoraVideoCall({ channelName, onEndCall, isHost = false 
           <div className="mt-4 text-xs text-gray-500">
             <p>Stream: {stream ? '✅ Available' : '⏳ Loading...'}</p>
             <p>Video Element: {videoRef.current ? '✅ Ready' : '⏳ Loading...'}</p>
-            <p>Attached: {streamAttached.current ? '✅ Yes' : '⏳ No'}</p>
+            <p>Video Ready: {videoReady ? '✅ Yes' : '⏳ No'}</p>
           </div>
         </div>
       </div>
@@ -258,7 +290,6 @@ export default function AgoraVideoCall({ channelName, onEndCall, isHost = false 
         <div>Video: {videoReady ? 'Ready' : 'Not Ready'}</div>
         <div>Element: {videoRef.current ? 'Found' : 'Not Found'}</div>
         <div>Stream: {stream ? 'Active' : 'None'}</div>
-        <div>Attached: {streamAttached.current ? 'Yes' : 'No'}</div>
         <div>Connecting: {isConnecting ? 'Yes' : 'No'}</div>
       </div>
     </div>
