@@ -2,15 +2,13 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
-import EmojiReactions from './EmojiReactions'
 
 interface AgoraViewerProps {
-  streamId: string
   channelName: string
   onLeave: () => void
 }
 
-export default function AgoraViewer({ channelName, streamId, onLeave }: AgoraViewerProps) {
+export default function AgoraViewer({ channelName, onLeave }: AgoraViewerProps) {
   const { userProfile } = useAuth()
   const [isViewing, setIsViewing] = useState(false)
   const [isConnecting, setIsConnecting] = useState(false)
@@ -18,12 +16,9 @@ export default function AgoraViewer({ channelName, streamId, onLeave }: AgoraVie
   const [viewerCount, setViewerCount] = useState(0)
   const [agoraLoaded, setAgoraLoaded] = useState(false)
   const [connectionState, setConnectionState] = useState<string>('disconnected')
-  const [reactionCount, setReactionCount] = useState(0)
   
   const clientRef = useRef<unknown>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
-  const audioRef = useRef<HTMLAudioElement>(null)
-  const initializedRef = useRef(false)
 
   // Check Agora App ID availability
   const agoraAppId = process.env.NEXT_PUBLIC_AGORA_APP_ID?.trim()
@@ -42,6 +37,26 @@ export default function AgoraViewer({ channelName, streamId, onLeave }: AgoraVie
     }
     
     loadAgora()
+  }, [])
+
+  // Generate Agora token for viewer
+  const generateToken = useCallback(async (channel: string, uid: number) => {
+    try {
+      console.log('🎫 Generating Agora token for viewer, channel:', channel, 'UID:', uid)
+      const response = await fetch(`/api/agora/token?channel=${channel}&uid=${uid}&role=subscriber`)
+      
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to generate token')
+      }
+      
+      const data = await response.json()
+      console.log('✅ Token generated successfully for viewer UID:', uid)
+      return data.token
+    } catch (err) {
+      console.error('❌ Error generating token:', err)
+      throw err
+    }
   }, [])
 
   // Generate a consistent numeric UID for viewer
@@ -64,129 +79,114 @@ export default function AgoraViewer({ channelName, streamId, onLeave }: AgoraVie
     return Math.floor(Math.random() * 100000) + 10000 // Random UID for anonymous viewers
   }, [userProfile?.uid])
 
-  // Generate Agora token for viewer
-  const generateToken = useCallback(async (channel: string, uid: number) => {
+  // Initialize Agora client for viewing
+  const initAgoraClient = useCallback(async () => {
+    if (clientRef.current) {
+      return clientRef.current
+    }
+
+    if (!agoraLoaded) {
+      throw new Error('Agora SDK not loaded')
+    }
+
+    if (!agoraAppId) {
+      throw new Error('Agora App ID not configured')
+    }
+
+    console.log('🎬 Initializing Agora client for viewer with App ID:', agoraAppId)
+    const AgoraRTCModule = await import('agora-rtc-sdk-ng')
+    const client = AgoraRTCModule.default.createClient({
+      mode: 'rtc',
+      codec: 'vp8'
+    })
+    
+    // Add event listeners
+    client.on('connection-state-change', (newState, reason) => {
+      console.log('🔗 Viewer connection state changed:', newState, reason)
+      setConnectionState(newState)
+    })
+
+    client.on('user-joined', (user) => {
+      console.log('👤 User joined (viewer sees):', user.uid)
+    })
+
+    client.on('user-left', (user) => {
+      console.log('👤 User left (viewer sees):', user.uid)
+    })
+
+    client.on('user-published', async (user, mediaType) => {
+      console.log('📺 User published stream:', user.uid, mediaType)
+      try {
+        await client.subscribe(user, mediaType)
+        console.log('✅ Subscribed to user stream:', user.uid, mediaType)
+        
+        if (mediaType === 'video' && user.videoTrack && videoRef.current) {
+          console.log('🎬 Playing remote video stream')
+          user.videoTrack.play(videoRef.current)
+        }
+      } catch (err) {
+        console.error('❌ Error subscribing to user stream:', err)
+      }
+    })
+
+    client.on('user-unpublished', (user, mediaType) => {
+      console.log('📺 User unpublished stream:', user.uid, mediaType)
+    })
+    
+    clientRef.current = client
+    console.log('✅ Agora client created for viewer')
+    return client
+  }, [agoraLoaded, agoraAppId])
+
+  // Join channel as viewer
+  const joinChannel = useCallback(async (client: unknown) => {
     try {
-      console.log('�� Generating Agora token for viewer, channel:', channel, 'UID:', uid)
-      const response = await fetch(`/api/agora/token?channel=${channel}&uid=${uid}&role=subscriber`)
+      console.log('🎯 Joining Agora channel as viewer:', channelName)
       
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to generate token')
+      // Get consistent numeric UID
+      const uid = getNumericUid()
+      console.log('👤 Using viewer UID:', uid)
+      
+      // Generate token with the same UID
+      const token = await generateToken(channelName, uid)
+      
+      // Type assertion for Agora client methods
+      const agoraClient = client as { 
+        join: (appId: string, channel: string, token: string | null, uid: string | number | null) => Promise<void>
       }
       
-      const data = await response.json()
-      console.log('✅ Token generated successfully for viewer UID:', uid)
-      return data.token
+      // Join the channel as viewer
+      await agoraClient.join(
+        agoraAppId!.trim(),
+        channelName,
+        token,
+        uid
+      )
+      
+      console.log('✅ Joined channel as viewer successfully')
+      setIsViewing(true)
+      setIsConnecting(false)
+      
     } catch (err) {
-      console.error('❌ Error generating token:', err)
+      console.error('❌ Error joining channel as viewer:', err)
       throw err
     }
-  }, [])
+  }, [channelName, agoraAppId, getNumericUid, generateToken])
 
-  // Handle emoji reaction
-  const handleReaction = useCallback((emoji: string) => {
-    setReactionCount(prev => prev + 1)
-    console.log('🎉 Emoji reaction:', emoji)
-    
-    // In a real app, you would send this reaction to other viewers via WebSocket
-    // For now, we'll just log it
-  }, [])
-
-  // Initialize viewer - this runs only once when component mounts
+  // Initialize viewer
   useEffect(() => {
     const initViewer = async () => {
-      // Prevent multiple initializations
-      if (initializedRef.current || !agoraLoaded || !agoraAppId) {
-        return
-      }
-
       try {
-        initializedRef.current = true
+        if (!agoraLoaded) return
+
         setIsConnecting(true)
         setError(null)
 
-        console.log('🎬 Initializing Agora client for viewer with App ID:', agoraAppId)
-        const AgoraRTCModule = await import('agora-rtc-sdk-ng')
-        const client = AgoraRTCModule.default.createClient({
-          mode: 'rtc',
-          codec: 'vp8'
-        })
+        // Initialize Agora client
+        const client = await initAgoraClient()
         
-        // Add event listeners
-        client.on('connection-state-change', (newState, reason) => {
-          console.log('🔗 Viewer connection state changed:', newState, reason)
-          setConnectionState(newState)
-        })
-
-        client.on('user-joined', (user) => {
-          console.log('👤 User joined (viewer sees):', user.uid)
-        })
-
-        client.on('user-left', (user) => {
-          console.log('👤 User left (viewer sees):', user.uid)
-        })
-
-        client.on('user-published', async (user, mediaType) => {
-          console.log('📺 User published stream:', user.uid, mediaType)
-          try {
-            await client.subscribe(user, mediaType)
-            console.log('✅ Subscribed to user stream:', user.uid, mediaType)
-            
-            if (mediaType === 'video' && user.videoTrack && videoRef.current) {
-              console.log('🎬 Playing remote video stream')
-              user.videoTrack.play(videoRef.current)
-            }
-            
-            if (mediaType === 'audio' && user.audioTrack && audioRef.current) {
-              console.log('🔊 Playing remote audio stream')
-              user.audioTrack.play()
-            }
-          } catch (err) {
-            console.error('❌ Error subscribing to user stream:', err)
-          }
-        })
-
-        client.on('user-unpublished', (user, mediaType) => {
-          console.log('📺 User unpublished stream:', user.uid, mediaType)
-        })
-
-        // Handle connection errors gracefully
-        client.on('exception', (event) => {
-          console.warn('⚠️ Agora connection exception:', event)
-          // Don't treat analytics errors as fatal
-          if (String(event.code) === 'CAN_NOT_GET_GATEWAY_SERVER' && event.msg?.includes('statscollector')) {
-            console.log('📊 Analytics blocked by browser - this is normal and does not affect functionality')
-            return
-          }
-          // For other errors, show them but don't necessarily fail
-          console.warn('Agora exception details:', event)
-        })
-
-        clientRef.current = client
-        console.log('✅ Agora client created for viewer')
-
         // Join channel
-        console.log('🎯 Joining Agora channel as viewer:', channelName)
-        
-        // Get consistent numeric UID
-        const uid = getNumericUid()
-        console.log('👤 Using viewer UID:', uid)
-        
-        // Generate token with the same UID
-        const token = await generateToken(channelName, uid)
-        
-        // Join the channel as viewer
-        await client.join(
-          agoraAppId.trim(),
-          channelName,
-          token,
-          uid
-        )
-        
-        console.log('✅ Joined channel as viewer successfully')
-        setIsViewing(true)
-        setIsConnecting(false)
+        await joinChannel(client)
 
       } catch (err) {
         console.error('❌ Error initializing viewer:', err)
@@ -196,38 +196,31 @@ export default function AgoraViewer({ channelName, streamId, onLeave }: AgoraVie
           setError('Failed to start viewing')
         }
         setIsConnecting(false)
-        initializedRef.current = false
       }
     }
 
     initViewer()
 
-    // Cleanup function
     return () => {
-      const cleanup = async () => {
-        try {
-          if (clientRef.current) {
-            const client = clientRef.current as { leave: () => Promise<void> }
-            await client.leave()
-            clientRef.current = null
-            initializedRef.current = false
-          }
-        } catch (err) {
-          console.error('Error during cleanup:', err)
-        }
-      }
       cleanup()
     }
-  }, [agoraLoaded, agoraAppId, channelName, getNumericUid, generateToken])
+  }, [agoraLoaded, initAgoraClient, joinChannel])
 
-  const stopViewing = async () => {
+  const cleanup = async () => {
     try {
       if (clientRef.current) {
         const client = clientRef.current as { leave: () => Promise<void> }
         await client.leave()
         clientRef.current = null
-        initializedRef.current = false
       }
+    } catch (err) {
+      console.error('Error during cleanup:', err)
+    }
+  }
+
+  const stopViewing = async () => {
+    try {
+      await cleanup()
       setIsViewing(false)
       setViewerCount(0)
       onLeave()
@@ -268,22 +261,9 @@ export default function AgoraViewer({ channelName, streamId, onLeave }: AgoraVie
         ref={videoRef}
         autoPlay
         playsInline
-        muted={false}
         className="w-full h-full object-cover"
         style={{ transform: 'scaleX(-1)' }} // Mirror the video
       />
-      
-      {/* Hidden audio element for viewer audio */}
-      <audio
-        ref={audioRef}
-        autoPlay
-        playsInline
-        muted={false}
-        className="hidden"
-      />
-      
-      {/* Emoji Reactions Overlay */}
-      <EmojiReactions streamId={streamId} onReaction={handleReaction} />
       
       {isConnecting && (
         <div className="absolute inset-0 flex items-center justify-center bg-gray-900 bg-opacity-75">
@@ -291,7 +271,6 @@ export default function AgoraViewer({ channelName, streamId, onLeave }: AgoraVie
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
             <p className="text-lg">Connecting to Stream...</p>
             <p className="text-sm opacity-75">Channel: {channelName}</p>
-            <p className="text-xs opacity-50 mt-2">Note: Analytics errors are normal and do not affect functionality</p>
           </div>
         </div>
       )}
@@ -317,9 +296,6 @@ export default function AgoraViewer({ channelName, streamId, onLeave }: AgoraVie
             <span className="text-white text-sm">Channel: {channelName}</span>
             <span className="text-white text-sm">Viewers: {viewerCount}</span>
             <span className="text-white text-sm">Status: {connectionState}</span>
-            {reactionCount > 0 && (
-              <span className="text-yellow-400 text-sm">🎉 {reactionCount} reactions</span>
-            )}
           </div>
 
           <button

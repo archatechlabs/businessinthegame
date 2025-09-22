@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { canUserStream, getStreamQuality, getStreamingTier, generateChannelName } from '@/utils/agora'
 import { UserRole, UserTier } from '@/contexts/AuthContext'
 import AgoraVideoCall from '@/components/live/AgoraVideoCall'
+import StreamRequestManager from '@/components/live/StreamRequestManager'
 
 export default function StreamPage() {
   const { user, userProfile } = useAuth()
@@ -174,6 +175,11 @@ export default function StreamPage() {
                   required
                 />
               </div>
+              <StreamRequestManager 
+                streamId={streamId}
+                onRequestAccepted={(request) => console.log("Request accepted:", request)}
+                onRequestRejected={(request) => console.log("Request rejected:", request)}
+              />
 
               <div>
                 <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-2">
@@ -188,6 +194,11 @@ export default function StreamPage() {
                   placeholder="Describe your stream"
                 />
               </div>
+              <StreamRequestManager 
+                streamId={streamId}
+                onRequestAccepted={(request) => console.log("Request accepted:", request)}
+                onRequestRejected={(request) => console.log("Request rejected:", request)}
+              />
 
               <div className="bg-gray-50 p-4 rounded-lg">
                 <h3 className="font-medium text-gray-900 mb-2">Stream Details</h3>
@@ -195,17 +206,47 @@ export default function StreamPage() {
                   <div>
                     <span className="font-medium">Channel:</span> {channelName}
                   </div>
+              <StreamRequestManager 
+                streamId={streamId}
+                onRequestAccepted={(request) => console.log("Request accepted:", request)}
+                onRequestRejected={(request) => console.log("Request rejected:", request)}
+              />
                   <div>
                     <span className="font-medium">Quality:</span> {getStreamQuality(getStreamingTier(userProfile.role as UserRole, userProfile.tier as UserTier)).quality}
                   </div>
+              <StreamRequestManager 
+                streamId={streamId}
+                onRequestAccepted={(request) => console.log("Request accepted:", request)}
+                onRequestRejected={(request) => console.log("Request rejected:", request)}
+              />
                   <div>
                     <span className="font-medium">Category:</span> General
                   </div>
+              <StreamRequestManager 
+                streamId={streamId}
+                onRequestAccepted={(request) => console.log("Request accepted:", request)}
+                onRequestRejected={(request) => console.log("Request rejected:", request)}
+              />
                   <div>
                     <span className="font-medium">Streamer:</span> {userProfile.username}
                   </div>
+              <StreamRequestManager 
+                streamId={streamId}
+                onRequestAccepted={(request) => console.log("Request accepted:", request)}
+                onRequestRejected={(request) => console.log("Request rejected:", request)}
+              />
                 </div>
+              <StreamRequestManager 
+                streamId={streamId}
+                onRequestAccepted={(request) => console.log("Request accepted:", request)}
+                onRequestRejected={(request) => console.log("Request rejected:", request)}
+              />
               </div>
+              <StreamRequestManager 
+                streamId={streamId}
+                onRequestAccepted={(request) => console.log("Request accepted:", request)}
+                onRequestRejected={(request) => console.log("Request rejected:", request)}
+              />
 
               <div className="flex space-x-4">
                 <button
@@ -229,6 +270,11 @@ export default function StreamPage() {
                   Cancel
                 </button>
               </div>
+              <StreamRequestManager 
+                streamId={streamId}
+                onRequestAccepted={(request) => console.log("Request accepted:", request)}
+                onRequestRejected={(request) => console.log("Request rejected:", request)}
+              />
             </div>
           ) : (
             <div className="space-y-6">
@@ -237,18 +283,34 @@ export default function StreamPage() {
                 <div className="bg-red-500 text-white px-4 py-2 rounded-lg inline-block mb-4">
                   🔴 LIVE
                 </div>
+              <StreamRequestManager 
+                streamId={streamId}
+                onRequestAccepted={(request) => console.log("Request accepted:", request)}
+                onRequestRejected={(request) => console.log("Request rejected:", request)}
+              />
                 <h2 className="text-2xl font-bold text-gray-900 mb-2">{streamTitle}</h2>
                 <p className="text-gray-600 mb-4">{streamDescription}</p>
               </div>
+              <StreamRequestManager 
+                streamId={streamId}
+                onRequestAccepted={(request) => console.log("Request accepted:", request)}
+                onRequestRejected={(request) => console.log("Request rejected:", request)}
+              />
 
               {/* Video Stream */}
               <div className="bg-black rounded-lg overflow-hidden">
                 <AgoraVideoCall
                   channelName={channelName}
-                  onEndCall={stopStream}
+                  onStreamEnd={stopStream}
+                  
                   isHost={true}
                 />
               </div>
+              <StreamRequestManager 
+                streamId={streamId}
+                onRequestAccepted={(request) => console.log("Request accepted:", request)}
+                onRequestRejected={(request) => console.log("Request rejected:", request)}
+              />
 
               {/* Stream Info */}
               <div className="bg-gray-50 p-4 rounded-lg">
@@ -256,17 +318,47 @@ export default function StreamPage() {
                   <div>
                     <span className="font-medium">Channel:</span> {channelName}
                   </div>
+              <StreamRequestManager 
+                streamId={streamId}
+                onRequestAccepted={(request) => console.log("Request accepted:", request)}
+                onRequestRejected={(request) => console.log("Request rejected:", request)}
+              />
                   <div>
                     <span className="font-medium">Viewers:</span> {viewerCount}
                   </div>
+              <StreamRequestManager 
+                streamId={streamId}
+                onRequestAccepted={(request) => console.log("Request accepted:", request)}
+                onRequestRejected={(request) => console.log("Request rejected:", request)}
+              />
                   <div>
                     <span className="font-medium">Quality:</span> {getStreamQuality(getStreamingTier(userProfile.role as UserRole, userProfile.tier as UserTier)).quality}
                   </div>
+              <StreamRequestManager 
+                streamId={streamId}
+                onRequestAccepted={(request) => console.log("Request accepted:", request)}
+                onRequestRejected={(request) => console.log("Request rejected:", request)}
+              />
                   <div>
                     <span className="font-medium">Stream ID:</span> {streamId}
                   </div>
+              <StreamRequestManager 
+                streamId={streamId}
+                onRequestAccepted={(request) => console.log("Request accepted:", request)}
+                onRequestRejected={(request) => console.log("Request rejected:", request)}
+              />
                 </div>
+              <StreamRequestManager 
+                streamId={streamId}
+                onRequestAccepted={(request) => console.log("Request accepted:", request)}
+                onRequestRejected={(request) => console.log("Request rejected:", request)}
+              />
               </div>
+              <StreamRequestManager 
+                streamId={streamId}
+                onRequestAccepted={(request) => console.log("Request accepted:", request)}
+                onRequestRejected={(request) => console.log("Request rejected:", request)}
+              />
 
               {/* Stream Configuration Status */}
               <div className="bg-blue-50 p-4 rounded-lg">
@@ -277,7 +369,17 @@ export default function StreamPage() {
                   <p>✅ Streamer: {userProfile.username}</p>
                   <p>✅ Quality: {getStreamQuality(getStreamingTier(userProfile.role as UserRole, userProfile.tier as UserTier)).quality}</p>
                 </div>
+              <StreamRequestManager 
+                streamId={streamId}
+                onRequestAccepted={(request) => console.log("Request accepted:", request)}
+                onRequestRejected={(request) => console.log("Request rejected:", request)}
+              />
               </div>
+              <StreamRequestManager 
+                streamId={streamId}
+                onRequestAccepted={(request) => console.log("Request accepted:", request)}
+                onRequestRejected={(request) => console.log("Request rejected:", request)}
+              />
 
               {/* Action Buttons */}
               <div className="flex space-x-4">
@@ -294,6 +396,11 @@ export default function StreamPage() {
                   End Stream
                 </button>
               </div>
+              <StreamRequestManager 
+                streamId={streamId}
+                onRequestAccepted={(request) => console.log("Request accepted:", request)}
+                onRequestRejected={(request) => console.log("Request rejected:", request)}
+              />
             </div>
           )}
         </div>

@@ -2,34 +2,48 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
+import EmojiReactions from './EmojiReactions'
 
 interface AgoraVideoCallProps {
   channelName: string
-  onEndCall: () => void
+  onStreamEnd: () => void
   isHost?: boolean
 }
 
-export default function AgoraVideoCall({ channelName, onEndCall }: AgoraVideoCallProps) {
+export default function AgoraVideoCall({ channelName, onStreamEnd, isHost = true }: AgoraVideoCallProps) {
   const { userProfile } = useAuth()
   const [isStreaming, setIsStreaming] = useState(false)
   const [isConnecting, setIsConnecting] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [cameraPermission, setCameraPermission] = useState<'granted' | 'denied' | 'prompt' | 'unknown'>('unknown')
-  const [videoReady, setVideoReady] = useState(false)
+  const [cameraEnabled, setCameraEnabled] = useState(true)
+  const [microphoneEnabled, setMicrophoneEnabled] = useState(true)
+  const [viewerCount, setViewerCount] = useState(0)
   const [agoraLoaded, setAgoraLoaded] = useState(false)
   const [connectionState, setConnectionState] = useState<string>('disconnected')
+  const [componentMounted, setComponentMounted] = useState(false)
+  const [reactionCount, setReactionCount] = useState(0)
+  const [streamSaved, setStreamSaved] = useState(false)
   
   const clientRef = useRef<unknown>(null)
-  const localVideoTrackRef = useRef<unknown>(null)
-  const localAudioTrackRef = useRef<unknown>(null)
-  const videoContainerRef = useRef<HTMLDivElement>(null)
+  const videoTrackRef = useRef<unknown>(null)
+  const audioTrackRef = useRef<unknown>(null)
+  const videoElementRef = useRef<HTMLVideoElement>(null)
+  const audioElementRef = useRef<HTMLAudioElement>(null)
+  const initializedRef = useRef(false)
+
+  // Check Agora App ID availability
+  const agoraAppId = process.env.NEXT_PUBLIC_AGORA_APP_ID?.trim()
+
+  if (!agoraAppId) {
+    console.error('❌ Agora App ID not configured')
+  }
 
   // Load Agora SDK
   useEffect(() => {
     const loadAgora = async () => {
       try {
         await import('agora-rtc-sdk-ng')
-        console.log('✅ Agora SDK loaded')
+        console.log('✅ Agora SDK loaded for streamer')
         setAgoraLoaded(true)
       } catch (err) {
         console.error('❌ Failed to load Agora SDK:', err)
@@ -40,281 +54,335 @@ export default function AgoraVideoCall({ channelName, onEndCall }: AgoraVideoCal
     loadAgora()
   }, [])
 
-  // Initialize Agora client
-  const initAgoraClient = useCallback(async () => {
-    if (clientRef.current) {
-      return clientRef.current
+  // Generate a consistent numeric UID for streamer
+  const getNumericUid = useCallback(() => {
+    if (userProfile?.uid) {
+      // Try to convert string UID to number, fallback to hash
+      const numericUid = parseInt(userProfile.uid, 10)
+      if (!isNaN(numericUid) && numericUid > 0) {
+        return numericUid
+      }
+      // If string UID can't be converted to number, create a hash
+      let hash = 0
+      for (let i = 0; i < userProfile.uid.length; i++) {
+        const char = userProfile.uid.charCodeAt(i)
+        hash = ((hash << 5) - hash) + char
+        hash = hash & hash // Convert to 32-bit integer
+      }
+      return Math.abs(hash)
     }
+    return Math.floor(Math.random() * 100000) // Random UID for anonymous streamers
+  }, [userProfile?.uid])
 
-    if (!agoraLoaded) {
-      throw new Error('Agora SDK not loaded')
-    }
-
-    console.log('🎬 Initializing Agora client')
-    const AgoraRTCModule = await import('agora-rtc-sdk-ng')
-    const client = AgoraRTCModule.default.createClient({
-      mode: 'rtc',
-      codec: 'vp8'
-    })
-    
-    // Add event listeners for connection state
-    client.on('connection-state-change', (newState, reason) => {
-      console.log('🔗 Connection state changed:', newState, reason)
-      setConnectionState(newState)
-    })
-
-    client.on('user-joined', (user) => {
-      console.log('👤 User joined:', user.uid)
-    })
-
-    client.on('user-left', (user) => {
-      console.log('👤 User left:', user.uid)
-    })
-    
-    clientRef.current = client
-    console.log('✅ Agora client created')
-    return client
-  }, [agoraLoaded])
-
-  // Create camera and microphone tracks
-  const createTracks = useCallback(async () => {
+  // Generate Agora token for streamer
+  const generateToken = useCallback(async (channel: string, uid: number) => {
     try {
-      console.log('🎥 Creating camera and microphone tracks...')
+      console.log('🎫 Generating Agora token for streamer, channel:', channel, 'UID:', uid)
+      const response = await fetch(`/api/agora/token?channel=${channel}&uid=${uid}&role=publisher`)
       
-      const AgoraRTCModule = await import('agora-rtc-sdk-ng')
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to generate token')
+      }
       
-      // Create camera video track
-      const videoTrack = await AgoraRTCModule.default.createCameraVideoTrack({
-        encoderConfig: {
-          width: 1280,
-          height: 720,
-          frameRate: 30
-        }
+      const data = await response.json()
+      console.log('✅ Token generated successfully for streamer UID:', uid)
+      return data.token
+    } catch (err) {
+      console.error('❌ Error generating token:', err)
+      throw err
+    }
+  }, [])
+
+  // Save stream to database
+  const saveStreamToDatabase = useCallback(async (streamData: Record<string, unknown>) => {
+    try {
+      console.log('💾 Saving stream to database:', streamData)
+      const response = await fetch('/api/streams', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(streamData),
       })
-      
-      // Create microphone audio track
-      const audioTrack = await AgoraRTCModule.default.createMicrophoneAudioTrack()
-      
-      localVideoTrackRef.current = videoTrack
-      localAudioTrackRef.current = audioTrack
-      
-      console.log('✅ Camera and microphone tracks created')
-      
-      // Play the video track in the container
-      if (videoContainerRef.current) {
-        videoTrack.play(videoContainerRef.current)
-        console.log('✅ Video track playing in container')
-        setVideoReady(true)
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('❌ Stream save failed:', response.status, errorText)
+        throw new Error(`Failed to save stream: ${response.status} ${errorText}`)
       }
-      
-      return { videoTrack, audioTrack }
+
+      const result = await response.json()
+      console.log('✅ Stream saved successfully:', result)
+      setStreamSaved(true)
+      return result
     } catch (err) {
-      console.error('❌ Error creating tracks:', err)
-      throw err
+      console.error('❌ Error saving stream:', err)
+      // Don't throw the error, just log it and continue streaming
+      console.warn('⚠️ Stream will continue without database save')
+      setStreamSaved(false)
+      return null
     }
   }, [])
 
-  // Join channel and publish tracks
-  const joinChannel = useCallback(async (client: unknown, videoTrack: unknown, audioTrack: unknown) => {
-    try {
-      console.log('🎯 Joining Agora channel:', channelName)
-      
-      // Type assertion for Agora client methods
-      const agoraClient = client as { 
-        join: (appId: string, channel: string, token: string | null, uid: string | number | null) => Promise<void>; 
-        publish: (tracks: unknown[]) => Promise<void> 
-      }
-      
-      // Join the channel
-      await agoraClient.join(
-        process.env.NEXT_PUBLIC_AGORA_APP_ID!,
-        channelName,
-        null, // token - we'll add this later
-        null  // uid - let Agora assign one
-      )
-      
-      console.log('✅ Joined channel successfully')
-      
-      // Publish tracks
-      await agoraClient.publish([videoTrack, audioTrack])
-      console.log('✅ Published tracks successfully')
-      
-      setIsStreaming(true)
-      setIsConnecting(false)
-      
-    } catch (err) {
-      console.error('❌ Error joining channel:', err)
-      throw err
-    }
-  }, [channelName])
+  // Handle emoji reaction
+  const handleReaction = useCallback((emoji: string) => {
+    setReactionCount(prev => prev + 1)
+    console.log('🎉 Emoji reaction received:', emoji)
+    
+    // In a real app, you would broadcast this reaction to all viewers via WebSocket
+    // For now, we'll just log it
+  }, [])
 
-  // Initialize camera and join channel
-  const initCamera = useCallback(async () => {
-    try {
-      console.log('🎥 Starting camera initialization...')
-      setIsConnecting(true)
-      setError(null)
-
-      // Check if we're in a secure context
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        throw new Error('Camera access not supported in this browser')
+  // Initialize streamer - this runs only once when component mounts
+  useEffect(() => {
+    const initStreamer = async () => {
+      // Prevent multiple initializations
+      if (initializedRef.current || !agoraLoaded || !agoraAppId) {
+        return
       }
 
-      // Check camera permissions first
       try {
-        const permission = await navigator.permissions.query({ name: 'camera' as PermissionName })
-        setCameraPermission(permission.state)
-        console.log('📷 Camera permission state:', permission.state)
-      } catch (permError) {
-        console.log('📷 Could not check camera permission:', permError)
-      }
+        initializedRef.current = true
+        setIsConnecting(true)
+        setError(null)
 
-      // Initialize Agora client
-      const client = await initAgoraClient()
-      
-      // Create tracks
-      const { videoTrack, audioTrack } = await createTracks()
-      
-      // Join channel and publish
-      await joinChannel(client, videoTrack, audioTrack)
-      
-      // Save stream to database
-      await saveStreamToDatabase(channelName, userProfile?.username || 'Unknown')
+        console.log('🎬 Initializing Agora client for streamer with App ID:', agoraAppId)
+        const AgoraRTCModule = await import('agora-rtc-sdk-ng')
+        const client = AgoraRTCModule.default.createClient({
+          mode: 'rtc',
+          codec: 'vp8'
+        })
+        
+        // Add event listeners
+        client.on('connection-state-change', (newState, reason) => {
+          console.log('�� Streamer connection state changed:', newState, reason)
+          setConnectionState(newState)
+        })
 
-    } catch (err) {
-      console.error('❌ Error initializing camera:', err)
-      if (err instanceof Error) {
-        if (err.name === 'NotAllowedError') {
-          setError('Camera access denied. Please allow camera access and try again.')
-          setCameraPermission('denied')
-        } else if (err.name === 'NotFoundError') {
-          setError('No camera found. Please connect a camera and try again.')
-        } else if (err.name === 'NotReadableError') {
-          setError('Camera is being used by another application. Please close other apps and try again.')
+        client.on('user-joined', (user) => {
+          console.log('👤 User joined (streamer sees):', user.uid)
+          setViewerCount(prev => prev + 1)
+        })
+
+        client.on('user-left', (user) => {
+          console.log('👤 User left (streamer sees):', user.uid)
+          setViewerCount(prev => Math.max(0, prev - 1))
+        })
+
+        // Handle connection errors gracefully
+        client.on('exception', (event) => {
+          console.warn('⚠️ Agora connection exception:', event)
+          // Don't treat analytics errors as fatal
+          if (String(event.code) === 'CAN_NOT_GET_GATEWAY_SERVER' && event.msg?.includes('statscollector')) {
+            console.log('📊 Analytics blocked by browser - this is normal and does not affect functionality')
+            return
+          }
+          // For other errors, show them but don't necessarily fail
+          console.warn('Agora exception details:', event)
+        })
+
+        clientRef.current = client
+        console.log('✅ Agora client created for streamer')
+
+        // Create video and audio tracks
+        console.log('📹 Creating video and audio tracks')
+        const [videoTrack, audioTrack] = await Promise.all([
+          AgoraRTCModule.default.createCameraVideoTrack({
+            encoderConfig: {
+              bitrateMin: 1000,
+              bitrateMax: 3000,
+              width: 1280,
+              height: 720,
+              frameRate: 30
+            }
+          }),
+          AgoraRTCModule.default.createMicrophoneAudioTrack()
+        ])
+
+        videoTrackRef.current = videoTrack
+        audioTrackRef.current = audioTrack
+        console.log('✅ Video and audio tracks created')
+
+        // Join channel
+        console.log('🎯 Joining Agora channel as streamer:', channelName)
+        
+        // Get consistent numeric UID
+        const uid = getNumericUid()
+        console.log('👤 Using streamer UID:', uid)
+        
+        // Generate token with the same UID
+        const token = await generateToken(channelName, uid)
+        
+        // Join the channel as streamer
+        await client.join(
+          agoraAppId.trim(),
+          channelName,
+          token,
+          uid
+        )
+        
+        console.log('✅ Joined channel as streamer successfully')
+
+        // Publish tracks
+        console.log('📡 Publishing video and audio tracks')
+        await client.publish([videoTrack, audioTrack])
+        console.log('✅ Tracks published successfully')
+
+        // Play video track immediately after publishing
+        if (videoElementRef.current) {
+          console.log('🎬 Playing video track')
+          videoTrack.play(videoElementRef.current)
         } else {
-          setError(err.message)
+          console.warn('⚠️ Video element not found for playback')
         }
-      } else {
-        setError('Failed to start stream')
+
+        // Play audio track for streamer to hear themselves
+        if (audioElementRef.current) {
+          console.log('🔊 Playing audio track for streamer')
+          audioTrack.play()
+        } else {
+          console.warn('⚠️ Audio element not found for playback')
+        }
+
+        // Try to save stream to database (non-blocking)
+        const streamData = {
+          title: `Live Stream - ${userProfile?.name || 'Anonymous'}`,
+          description: `Live stream from ${userProfile?.name || 'Anonymous'}`,
+          channelName: channelName,
+          streamerName: userProfile?.name || 'Anonymous',
+          streamerUsername: userProfile?.username || 'anonymous',
+          streamerAvatar: userProfile?.avatar || '',
+          startTime: new Date(),
+          endTime: null,
+          thumbnail: userProfile?.avatar || '',
+          tags: ['live', 'streaming'],
+          category: 'general',
+          quality: 'HD',
+          isLive: true,
+          isAdminStream: userProfile?.role === 'super-admin',
+          viewerCount: 0
+        }
+
+        // Save stream asynchronously - don't block streaming if it fails
+        saveStreamToDatabase(streamData).then(result => {
+          if (result) {
+            console.log('✅ Stream saved to database with ID:', result.id)
+          } else {
+            console.warn('⚠️ Stream not saved to database, but streaming continues')
+          }
+        }).catch(err => {
+          console.warn('⚠️ Stream save failed, but streaming continues:', err)
+        })
+
+        setIsStreaming(true)
+        setIsConnecting(false)
+        setComponentMounted(true)
+
+      } catch (err) {
+        console.error('❌ Error initializing streamer:', err)
+        if (err instanceof Error) {
+          setError(err.message)
+        } else {
+          setError('Failed to start streaming')
+        }
+        setIsConnecting(false)
+        initializedRef.current = false
       }
-      setIsConnecting(false)
     }
-  }, [channelName, userProfile, initAgoraClient, createTracks, joinChannel])
 
-  // Initialize camera on mount
-  useEffect(() => {
-    if (agoraLoaded) {
-      const timer = setTimeout(() => {
-        initCamera()
-      }, 1000) // Wait 1 second for component to fully render
+    initStreamer()
 
-      return () => {
-        clearTimeout(timer)
-      }
-    }
-  }, [agoraLoaded, initCamera])
-
-  // Cleanup on unmount
-  useEffect(() => {
+    // Cleanup function
     return () => {
-      if (localVideoTrackRef.current) {
-        const videoTrack = localVideoTrackRef.current as { close: () => void }
-        videoTrack.close()
-        localVideoTrackRef.current = null
+      const cleanup = async () => {
+        try {
+          if (clientRef.current) {
+            const client = clientRef.current as { leave: () => Promise<void> }
+            await client.leave()
+            clientRef.current = null
+            initializedRef.current = false
+          }
+          if (videoTrackRef.current) {
+            const videoTrack = videoTrackRef.current as { close: () => void }
+            videoTrack.close()
+            videoTrackRef.current = null
+          }
+          if (audioTrackRef.current) {
+            const audioTrack = audioTrackRef.current as { close: () => void }
+            audioTrack.close()
+            audioTrackRef.current = null
+          }
+        } catch (err) {
+          console.error('Error during cleanup:', err)
+        }
       }
-      if (localAudioTrackRef.current) {
-        const audioTrack = localAudioTrackRef.current as { close: () => void }
-        audioTrack.close()
-        localAudioTrackRef.current = null
-      }
-      if (clientRef.current) {
-        const client = clientRef.current as { leave: () => Promise<void> }
-        client.leave()
-        clientRef.current = null
-      }
+      cleanup()
     }
-  }, [])
-
-  const saveStreamToDatabase = async (channelName: string, streamerName: string) => {
-    try {
-      console.log('💾 Stream saved to database:', { channelName, streamerName })
-    } catch (err) {
-      console.error('Error saving stream to database:', err)
-    }
-  }
+  }, [agoraLoaded, agoraAppId, channelName, getNumericUid, generateToken, saveStreamToDatabase, userProfile])
 
   const stopStreaming = async () => {
     try {
-      if (localVideoTrackRef.current) {
-        const videoTrack = localVideoTrackRef.current as { close: () => void }
-        videoTrack.close()
-        localVideoTrackRef.current = null
-      }
-      if (localAudioTrackRef.current) {
-        const audioTrack = localAudioTrackRef.current as { close: () => void }
-        audioTrack.close()
-        localAudioTrackRef.current = null
-      }
       if (clientRef.current) {
         const client = clientRef.current as { leave: () => Promise<void> }
         await client.leave()
         clientRef.current = null
+        initializedRef.current = false
+      }
+      if (videoTrackRef.current) {
+        const videoTrack = videoTrackRef.current as { close: () => void }
+        videoTrack.close()
+        videoTrackRef.current = null
+      }
+      if (audioTrackRef.current) {
+        const audioTrack = audioTrackRef.current as { close: () => void }
+        audioTrack.close()
+        audioTrackRef.current = null
       }
       setIsStreaming(false)
-      setVideoReady(false)
-      onEndCall()
+      setViewerCount(0)
+      onStreamEnd()
     } catch (err) {
       console.error('Error stopping stream:', err)
     }
   }
 
-  if (error) {
-    return (
-      <div className="flex items-center justify-center h-96 bg-gray-900 rounded-lg">
-        <div className="text-center text-white p-6">
-          <div className="text-red-400 text-6xl mb-4">⚠️</div>
-          <h3 className="text-xl font-semibold mb-2">Stream Error</h3>
-          <p className="text-gray-300 mb-4">{error}</p>
-          {cameraPermission === 'denied' && (
-            <div className="text-sm text-gray-400 mb-4">
-              <p>To fix this:</p>
-              <ol className="list-decimal list-inside space-y-1 mt-2">
-                <li>Click the camera icon in your browser&apos;s address bar</li>
-                <li>Select &quot;Allow&quot; for camera access</li>
-                <li>Refresh the page and try again</li>
-              </ol>
-            </div>
-          )}
-          <button
-            onClick={() => window.location.reload()}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
-          >
-            Try Again
-          </button>
-        </div>
-      </div>
-    )
+  const toggleCamera = async () => {
+    if (videoTrackRef.current) {
+      const videoTrack = videoTrackRef.current as { setEnabled: (enabled: boolean) => Promise<void> }
+      await videoTrack.setEnabled(!cameraEnabled)
+      setCameraEnabled(!cameraEnabled)
+    }
   }
 
-  if (!agoraLoaded || isConnecting) {
+  const toggleMicrophone = async () => {
+    if (audioTrackRef.current) {
+      const audioTrack = audioTrackRef.current as { setEnabled: (enabled: boolean) => Promise<void> }
+      await audioTrack.setEnabled(!microphoneEnabled)
+      setMicrophoneEnabled(!microphoneEnabled)
+    }
+  }
+
+  if (error) {
     return (
-      <div className="flex items-center justify-center h-96 bg-gray-900 rounded-lg">
+      <div className="w-full h-full bg-gray-900 flex items-center justify-center">
         <div className="text-center text-white">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-white mx-auto mb-4"></div>
-          <p className="text-lg">
-            {!agoraLoaded ? 'Loading video SDK...' : 'Starting camera...'}
-          </p>
-          <p className="text-sm text-gray-400 mt-2">
-            {!agoraLoaded ? 'Please wait...' : 'Please allow camera access when prompted'}
-          </p>
-          <div className="mt-4 text-xs text-gray-500">
-            <p>SDK: {agoraLoaded ? '✅ Loaded' : '⏳ Loading...'}</p>
-            <p>Client: {clientRef.current ? '✅ Created' : '❌ Not Created'}</p>
-            <p>Video Track: {localVideoTrackRef.current ? '✅ Created' : '❌ Not Created'}</p>
-            <p>Audio Track: {localAudioTrackRef.current ? '✅ Created' : '❌ Not Created'}</p>
-            <p>Video Ready: {videoReady ? '✅ Yes' : '⏳ No'}</p>
-            <p>Streaming: {isStreaming ? '✅ Yes' : '⏳ No'}</p>
-            <p>Connection: {connectionState}</p>
+          <div className="text-red-500 mb-4 text-4xl">⚠️</div>
+          <p className="text-lg mb-2">Streaming Error</p>
+          <p className="text-sm text-gray-300 mb-4">{error}</p>
+          <div className="space-x-2">
+            <button
+              onClick={() => window.location.reload()}
+              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+            >
+              Retry
+            </button>
+            <button
+              onClick={stopStreaming}
+              className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+            >
+              Stop Stream
+            </button>
           </div>
         </div>
       </div>
@@ -322,57 +390,89 @@ export default function AgoraVideoCall({ channelName, onEndCall }: AgoraVideoCal
   }
 
   return (
-    <div className="relative bg-gray-900 rounded-lg overflow-hidden">
-      {/* Agora video container */}
-      <div 
-        ref={videoContainerRef} 
-        className="w-full h-96 bg-gray-800"
+    <div className="w-full h-full bg-gray-900 relative">
+      <video
+        ref={videoElementRef}
+        autoPlay
+        playsInline
+        muted={false}
+        className="w-full h-full object-cover"
         style={{ transform: 'scaleX(-1)' }} // Mirror the video
       />
       
-      {/* Overlay Controls */}
-      <div className="absolute bottom-4 left-4 right-4 flex justify-between items-center">
-        <div className="flex items-center space-x-4">
-          <div className="bg-red-500 text-white px-3 py-1 rounded-full text-sm font-semibold">
-            🔴 LIVE
+      {/* Hidden audio element for streamer to hear themselves */}
+      <audio
+        ref={audioElementRef}
+        autoPlay
+        playsInline
+        muted={false}
+        className="hidden"
+      />
+      
+      {/* Emoji Reactions Overlay */}
+      <EmojiReactions streamId={currentStreamId} onReaction={handleReaction} />
+      
+      {isConnecting && (
+        <div className="absolute inset-0 flex items-center justify-center bg-gray-900 bg-opacity-75">
+          <div className="text-center text-white">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
+            <p className="text-lg">Starting Stream...</p>
+            <p className="text-sm opacity-75">Channel: {channelName}</p>
+            <p className="text-xs opacity-50 mt-2">Note: Analytics errors are normal and do not affect functionality</p>
           </div>
-          <div className="bg-black bg-opacity-50 text-white px-3 py-1 rounded-full text-sm">
-            👥 0 viewers
+        </div>
+      )}
+
+      {!isStreaming && !isConnecting && (
+        <div className="absolute inset-0 flex items-center justify-center bg-gray-900">
+          <div className="text-center text-white">
+            <div className="text-gray-400 mb-4 text-4xl">📹</div>
+            <p className="text-lg mb-2">Ready to Stream</p>
+            <p className="text-sm text-gray-300">Click start to begin your live stream</p>
           </div>
         </div>
-        
-        <div className="flex space-x-2">
-          <button
-            onClick={stopStreaming}
-            className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 flex items-center space-x-2"
-          >
-            <span>⏹️</span>
-            <span>End Stream</span>
-          </button>
-        </div>
-      </div>
+      )}
 
-      {/* Stream Info Overlay */}
-      <div className="absolute top-4 left-4 bg-black bg-opacity-50 text-white p-3 rounded-lg">
-        <div className="text-sm">
-          <div><strong>Channel:</strong> {channelName}</div>
-          <div><strong>Streamer:</strong> {userProfile?.username || 'Unknown'}</div>
-          <div><strong>Quality:</strong> {process.env.NEXT_PUBLIC_AGORA_APP_ID ? 'HD' : 'Not configured'}</div>
-        </div>
-      </div>
+      {/* Streamer Controls */}
+      <div className="absolute bottom-4 left-4 right-4">
+        <div className="flex items-center justify-between bg-black bg-opacity-50 rounded-lg p-3">
+          <div className="flex items-center space-x-3">
+            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-600 text-white">
+              <div className="w-2 h-2 bg-white rounded-full mr-1.5 animate-pulse"></div>
+              LIVE
+            </span>
+            <span className="text-white text-sm">Channel: {channelName}</span>
+            <span className="text-white text-sm">Viewers: {viewerCount}</span>
+            <span className="text-white text-sm">Status: {connectionState}</span>
+            {reactionCount > 0 && (
+              <span className="text-yellow-400 text-sm">🎉 {reactionCount} reactions</span>
+            )}
+            {!streamSaved && (
+              <span className="text-orange-400 text-sm">⚠️ DB save failed</span>
+            )}
+          </div>
 
-      {/* Debug Info */}
-      <div className="absolute top-4 right-4 bg-black bg-opacity-50 text-white p-2 rounded text-xs">
-        <div>Status: {isStreaming ? 'Streaming' : 'Not Streaming'}</div>
-        <div>Camera: {cameraPermission}</div>
-        <div>Video: {videoReady ? 'Ready' : 'Not Ready'}</div>
-        <div>Client: {clientRef.current ? 'Yes' : 'No'}</div>
-        <div>Video Track: {localVideoTrackRef.current ? 'Yes' : 'No'}</div>
-        <div>Audio Track: {localAudioTrackRef.current ? 'Yes' : 'No'}</div>
-        <div>Connecting: {isConnecting ? 'Yes' : 'No'}</div>
-        <div>Connection: {connectionState}</div>
-        <div className="text-yellow-400 text-xs mt-1">
-          Note: Analytics blocked by browser
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={toggleCamera}
+              className={`p-2 rounded-md ${cameraEnabled ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'} text-white`}
+            >
+              {cameraEnabled ? '📹' : '📷'}
+            </button>
+            <button
+              onClick={toggleMicrophone}
+              className={`p-2 rounded-md ${microphoneEnabled ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'} text-white`}
+            >
+              {microphoneEnabled ? '🎤' : '🔇'}
+            </button>
+            <button
+              onClick={stopStreaming}
+              className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 flex items-center"
+            >
+              <span className="mr-2">⏹️</span>
+              End Stream
+            </button>
+          </div>
         </div>
       </div>
     </div>

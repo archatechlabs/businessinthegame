@@ -1,0 +1,142 @@
+'use client'
+
+import { useState } from 'react'
+import { useAuth } from '@/contexts/AuthContext'
+
+interface StreamJoinRequestProps {
+  streamId: string
+  streamerName: string
+  onRequestSent?: () => void
+}
+
+export default function StreamJoinRequest({ streamId, streamerName, onRequestSent }: StreamJoinRequestProps) {
+  const { user, userProfile } = useAuth()
+  const [isRequesting, setIsRequesting] = useState(false)
+  const [showModal, setShowModal] = useState(false)
+  const [message, setMessage] = useState('')
+  const [requestStatus, setRequestStatus] = useState<'idle' | 'success' | 'error'>('idle')
+
+  const handleRequestJoin = async () => {
+    if (!user || !userProfile) {
+      alert('Please sign in to request to join the stream')
+      return
+    }
+
+    setIsRequesting(true)
+    setRequestStatus('idle')
+
+    try {
+      const response = await fetch('/api/stream-requests', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          streamId,
+          requesterId: user.uid,
+          requesterName: userProfile.name || user.displayName || 'Anonymous',
+          requesterAvatar: userProfile.avatar || user.photoURL || null,
+          message: message.trim()
+        })
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        setRequestStatus('success')
+        setShowModal(false)
+        setMessage('')
+        if (onRequestSent) {
+          onRequestSent()
+        }
+      } else {
+        setRequestStatus('error')
+        console.error('Error sending request:', data.error)
+      }
+    } catch (error) {
+      setRequestStatus('error')
+      console.error('Error sending request:', error)
+    } finally {
+      setIsRequesting(false)
+    }
+  }
+
+  if (!user) {
+    return null
+  }
+
+  return (
+    <>
+      {/* Request Join Button */}
+      <div className="absolute bottom-4 left-4 z-40">
+        <button
+          onClick={() => setShowModal(true)}
+          className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200 shadow-lg flex items-center gap-2"
+        >
+          <span>🎤</span>
+          <span>Request to Join</span>
+        </button>
+      </div>
+
+      {/* Request Modal */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+            <h3 className="text-xl font-semibold mb-4">
+              Request to Join {streamerName}&apos;s Stream
+            </h3>
+            
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Message (optional)
+              </label>
+              <textarea
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                placeholder="Tell the streamer why you&apos;d like to join..."
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                rows={3}
+                maxLength={200}
+              />
+              <div className="text-xs text-gray-500 mt-1">
+                {message.length}/200 characters
+              </div>
+            </div>
+
+            {requestStatus === 'success' && (
+              <div className="mb-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded-lg">
+                ✅ Request sent successfully! The streamer will be notified.
+              </div>
+            )}
+
+            {requestStatus === 'error' && (
+              <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg">
+                ❌ Failed to send request. Please try again.
+              </div>
+            )}
+
+            <div className="flex gap-3">
+              <button
+                onClick={handleRequestJoin}
+                disabled={isRequesting}
+                className="flex-1 bg-blue-500 hover:bg-blue-600 disabled:bg-blue-300 text-white py-2 px-4 rounded-lg font-medium transition-colors duration-200"
+              >
+                {isRequesting ? 'Sending...' : 'Send Request'}
+              </button>
+              <button
+                onClick={() => {
+                  setShowModal(false)
+                  setMessage('')
+                  setRequestStatus('idle')
+                }}
+                className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 py-2 px-4 rounded-lg font-medium transition-colors duration-200"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  )
+}

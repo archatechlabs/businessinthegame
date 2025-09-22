@@ -4,14 +4,13 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
 import { 
   VideoCameraIcon, 
   PlayIcon, 
   UserGroupIcon, 
   ClockIcon,
-  EyeIcon,
-  PlusIcon,
-  ShoppingCartIcon
+  EyeIcon
 } from '@heroicons/react/24/outline'
 
 interface LiveStream {
@@ -29,32 +28,93 @@ interface LiveStream {
   channelName: string
 }
 
+interface StreamData {
+  id: string
+  title: string
+  description: string
+  streamerName: string
+  streamerUsername: string
+  streamerAvatar: string
+  viewerCount: number
+  isLive: boolean
+  startedAt: unknown
+  startTime?: unknown
+  thumbnail: string
+  isAdminStream: boolean
+  channelName: string
+}
+
 export default function LiveStreamingPage() {
-  const { user, userProfile, isAdmin, isSuperAdmin } = useAuth()
+  const { user, userProfile } = useAuth()
   const router = useRouter()
   const [liveStreams, setLiveStreams] = useState<LiveStream[]>([])
   const [loading, setLoading] = useState(true)
-  const [showPurchaseModal, setShowPurchaseModal] = useState(false)
+
+  // Helper function to safely convert any timestamp to Date
+  const safeConvertToDate = (timestamp: unknown): Date => {
+    if (!timestamp) return new Date()
+    
+    if (timestamp instanceof Date) return timestamp
+    
+    if (typeof timestamp === 'string') {
+      const parsed = new Date(timestamp)
+      if (!isNaN(parsed.getTime())) return parsed
+    }
+    
+    if (typeof timestamp === 'number') {
+      const timestampMs = timestamp < 10000000000 ? timestamp * 1000 : timestamp
+      const parsed = new Date(timestampMs)
+      if (!isNaN(parsed.getTime())) return parsed
+    }
+    
+    if (timestamp && typeof timestamp === 'object' && 'toDate' in timestamp) {
+      try {
+        const firestoreTimestamp = timestamp as { toDate: () => Date }
+        if (typeof firestoreTimestamp.toDate === 'function') {
+          return firestoreTimestamp.toDate()
+        }
+      } catch (error) {
+        console.warn('Error converting Firestore timestamp:', error)
+      }
+    }
+    
+    return new Date()
+  }
 
   // Fetch live streams from API
   useEffect(() => {
     const fetchLiveStreams = async () => {
       try {
         setLoading(true)
+        console.log('🔍 Fetching live streams...')
         const response = await fetch('/api/streams')
+        console.log('📡 Streams API response:', response.status, response.statusText)
+        
         if (response.ok) {
-          const streams = await response.json()
-          // Filter only live streams
-          const liveStreams = streams.filter((stream: LiveStream) => stream.isLive)
+          const data = await response.json()
+          console.log('📊 Streams data received:', data)
+          
+          const streams = Array.isArray(data) ? data : []
+          console.log('✅ Processed streams array:', streams)
+          
+          // Convert all streams and ensure proper date handling
+          const liveStreams = streams
+            .filter((stream: StreamData) => stream.isLive)
+            .map((stream: StreamData) => ({
+              ...stream,
+              startedAt: safeConvertToDate(stream.startedAt || stream.startTime)
+            }))
+          
+          console.log('🎥 Live streams found:', liveStreams.length)
           setLiveStreams(liveStreams)
         } else {
-          console.error('Failed to fetch streams')
-          // Fallback to empty array
+          console.error('❌ Failed to fetch streams:', response.status, response.statusText)
+          const errorData = await response.json().catch(() => ({}))
+          console.error('❌ Error details:', errorData)
           setLiveStreams([])
         }
       } catch (error) {
-        console.error('Error fetching streams:', error)
-        // Fallback to empty array
+        console.error('❌ Error fetching streams:', error)
         setLiveStreams([])
       } finally {
         setLoading(false)
@@ -65,17 +125,22 @@ export default function LiveStreamingPage() {
   }, [])
 
   const formatTimeAgo = (date: Date) => {
-    const now = new Date()
-    const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60))
-    
-    if (diffInMinutes < 1) return 'Just now'
-    if (diffInMinutes < 60) return `${diffInMinutes}m ago`
-    
-    const diffInHours = Math.floor(diffInMinutes / 60)
-    if (diffInHours < 24) return `${diffInHours}h ago`
-    
-    const diffInDays = Math.floor(diffInHours / 24)
-    return `${diffInDays}d ago`
+    try {
+      const now = new Date()
+      const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60))
+      
+      if (diffInMinutes < 1) return 'Just now'
+      if (diffInMinutes < 60) return `${diffInMinutes}m ago`
+      
+      const diffInHours = Math.floor(diffInMinutes / 60)
+      if (diffInHours < 24) return `${diffInHours}h ago`
+      
+      const diffInDays = Math.floor(diffInHours / 24)
+      return `${diffInDays}d ago`
+    } catch (error) {
+      console.error('Error formatting time:', error)
+      return 'Unknown'
+    }
   }
 
   const canUserStream = () => {
@@ -85,8 +150,18 @@ export default function LiveStreamingPage() {
 
   if (!user) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
+          {/* BIG Logo */}
+          <div className="mb-8">
+            <Image
+              src="/Images/BIG Logo image.png"
+              alt="BIG Logo"
+              width={200}
+              height={80}
+              className="mx-auto"
+            />
+          </div>
           <h1 className="text-2xl font-bold text-gray-900 mb-4">Please Sign In</h1>
           <p className="text-gray-600 mb-6">You need to be signed in to view live streams.</p>
           <button
@@ -106,9 +181,19 @@ export default function LiveStreamingPage() {
       <div className="bg-white shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Live Streaming</h1>
-              <p className="mt-2 text-gray-600">Watch and interact with live streams from the BIG community</p>
+            <div className="flex items-center space-x-4">
+              {/* BIG Logo */}
+              <Image
+                src="/Images/BIG Logo image.png"
+                alt="BIG Logo"
+                width={120}
+                height={48}
+                className="h-12 w-auto"
+              />
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900">Live Streaming</h1>
+                <p className="mt-2 text-gray-600">Watch and interact with live streams from the BIG community</p>
+              </div>
             </div>
             {canUserStream() && (
               <Link
@@ -174,11 +259,11 @@ export default function LiveStreamingPage() {
                   <div className="absolute top-4 right-4">
                     <div className="bg-black bg-opacity-50 text-white px-3 py-1 rounded-full text-sm flex items-center space-x-1">
                       <EyeIcon className="h-4 w-4" />
-                      <span>{stream.viewerCount}</span>
+                      <span>{stream.viewerCount || 0}</span>
                     </div>
                   </div>
 
-                  {/* Play Button Overlay */}
+                  {/* Play Button Overlay - Link to watch page */}
                   <div className="absolute inset-0 flex items-center justify-center">
                     <Link
                       href={`/live/watch/${stream.id}`}
@@ -209,13 +294,13 @@ export default function LiveStreamingPage() {
                         />
                       ) : (
                         <span className="text-gray-600 font-semibold">
-                          {stream.streamerName.charAt(0).toUpperCase()}
+                          {stream.streamerName?.charAt(0)?.toUpperCase() || 'U'}
                         </span>
                       )}
                     </div>
                     <div>
-                      <p className="font-medium text-gray-900">{stream.streamerName}</p>
-                      <p className="text-sm text-gray-500">@{stream.streamerUsername}</p>
+                      <p className="font-medium text-gray-900">{stream.streamerName || 'Unknown'}</p>
+                      <p className="text-sm text-gray-500">@{stream.streamerUsername || 'unknown'}</p>
                     </div>
                   </div>
 
@@ -227,8 +312,19 @@ export default function LiveStreamingPage() {
                     </div>
                     <div className="flex items-center space-x-1">
                       <UserGroupIcon className="h-4 w-4" />
-                      <span>{stream.viewerCount} watching</span>
+                      <span>{stream.viewerCount || 0} watching</span>
                     </div>
+                  </div>
+
+                  {/* Watch Button */}
+                  <div className="mt-4">
+                    <Link
+                      href={`/live/watch/${stream.id}`}
+                      className="w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center justify-center space-x-2"
+                    >
+                      <PlayIcon className="h-4 w-4" />
+                      <span>Watch Live</span>
+                    </Link>
                   </div>
                 </div>
               </div>
