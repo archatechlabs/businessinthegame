@@ -147,11 +147,12 @@ export default function EmojiReactions({ streamId, onReaction }: EmojiReactionsP
     }
   }
 
-  // Handle click on emoji picker
+  // Handle click on emoji picker - optimized for rapid clicking
   const handleEmojiClick = (emoji: string) => {
     const now = Date.now()
     const timeSinceLastClick = now - lastClickTime.current
     
+    // Allow rapid clicking - no rate limiting
     lastClickTime.current = now
     
     console.log('🎭 Emoji clicked:', emoji, 'Time since last click:', timeSinceLastClick)
@@ -163,13 +164,6 @@ export default function EmojiReactions({ streamId, onReaction }: EmojiReactionsP
     if (e.detail === 2) {
       console.log('🎭 Double-click detected, adding heart reaction')
       addReaction('❤️')
-    }
-  }
-
-  // Add multiple reactions at once for spamming effect
-  const addMultipleReactions = (emoji: string, count: number = 3) => {
-    for (let i = 0; i < count; i++) {
-      setTimeout(() => addReaction(emoji), i * 50) // Stagger by 50ms
     }
   }
 
@@ -235,7 +229,7 @@ export default function EmojiReactions({ streamId, onReaction }: EmojiReactionsP
           <span className="text-3xl">😀</span>
         </button>
 
-        {/* Emoji Picker - Optimized for spamming */}
+        {/* Emoji Picker - Optimized for rapid clicking */}
         {showPicker && (
           <div 
             className="absolute top-20 right-0 bg-white bg-opacity-95 backdrop-blur-sm rounded-lg p-6 shadow-2xl border-2 border-gray-300 pointer-events-auto"
@@ -243,7 +237,7 @@ export default function EmojiReactions({ streamId, onReaction }: EmojiReactionsP
           >
             <div className="text-center mb-4">
               <h3 className="text-lg font-semibold text-gray-800">Add Reaction</h3>
-              <p className="text-sm text-gray-600">Click rapidly to spam! 🚀</p>
+              <p className="text-sm text-gray-600">Tap rapidly to spam! 🚀</p>
             </div>
             
             <div className="grid grid-cols-5 gap-3 mb-4">
@@ -251,29 +245,12 @@ export default function EmojiReactions({ streamId, onReaction }: EmojiReactionsP
                 <button
                   key={emoji}
                   onClick={() => handleEmojiClick(emoji)}
-                  onMouseDown={() => addMultipleReactions(emoji, 2)} // Add 2 reactions on mouse down
                   className="text-3xl hover:scale-125 transition-transform duration-150 p-3 rounded-lg hover:bg-gray-200 border border-transparent hover:border-gray-300 active:scale-110"
-                  title={`Spam ${emoji} reactions!`}
+                  title={`Tap rapidly to spam ${emoji} reactions!`}
                 >
                   {emoji}
                 </button>
               ))}
-            </div>
-            
-            {/* Spam Buttons */}
-            <div className="grid grid-cols-2 gap-2 mb-4">
-              <button
-                onClick={() => addMultipleReactions('❤️', 5)}
-                className="bg-red-100 hover:bg-red-200 text-red-700 px-3 py-2 rounded-lg text-sm font-medium transition-colors"
-              >
-                💥 Spam Hearts
-              </button>
-              <button
-                onClick={() => addMultipleReactions('😂', 5)}
-                className="bg-yellow-100 hover:bg-yellow-200 text-yellow-700 px-3 py-2 rounded-lg text-sm font-medium transition-colors"
-              >
-                💥 Spam Laughs
-              </button>
             </div>
             
             <div className="text-center">
