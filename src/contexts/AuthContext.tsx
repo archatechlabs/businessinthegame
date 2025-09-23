@@ -125,19 +125,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // Check if Firebase is properly configured
     if (!process.env.NEXT_PUBLIC_FIREBASE_API_KEY || process.env.NEXT_PUBLIC_FIREBASE_API_KEY === 'demo-key') {
+      console.log('Firebase not configured, setting loading to false')
       setLoading(false)
       return
     }
 
+    console.log('Setting up auth state listener...')
+    
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      console.log('Auth state changed:', user ? { uid: user.uid, email: user.email } : 'No user')
       setUser(user)
       
       if (user) {
         // Fetch user profile from Firestore
         try {
+          console.log('Fetching user profile for:', user.uid)
           const userDoc = await getDoc(doc(db, 'users', user.uid))
           if (userDoc.exists()) {
             const profileData = userDoc.data()
+            console.log('User profile found:', profileData)
             setUserProfile({
               ...profileData,
               createdAt: profileData.createdAt?.toDate(),
@@ -149,18 +155,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             await setDoc(doc(db, 'users', user.uid), {
               lastLoginAt: new Date()
             }, { merge: true })
+          } else {
+            console.log('No user profile found for:', user.uid)
+            setUserProfile(null)
           }
         } catch (error) {
           console.error('Error fetching user profile:', error)
+          setUserProfile(null)
         }
       } else {
+        console.log('No user, clearing profile')
         setUserProfile(null)
       }
       
       setLoading(false)
     })
 
-    return () => unsubscribe()
+    return () => {
+      console.log('Cleaning up auth listener')
+      unsubscribe()
+    }
   }, [])
 
   const signUp = async (email: string, password: string, name: string, username: string, bio?: string) => {
@@ -210,6 +224,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     try {
+      console.log('Signing in user:', email)
       await signInWithEmailAndPassword(auth, email, password)
     } catch (error) {
       console.error('Error signing in:', error)
@@ -219,12 +234,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     if (!process.env.NEXT_PUBLIC_FIREBASE_API_KEY || process.env.NEXT_PUBLIC_FIREBASE_API_KEY === 'demo-key') {
+      console.log('Firebase not configured, clearing local state')
       setUser(null)
       setUserProfile(null)
       return
     }
 
     try {
+      console.log('Signing out user')
       await signOut(auth)
       setUserProfile(null)
     } catch (error) {

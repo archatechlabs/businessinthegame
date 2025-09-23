@@ -23,6 +23,7 @@ export default function AgoraVideoCall({ channelName, onStreamEnd, isHost = true
   const [componentMounted, setComponentMounted] = useState(false)
   const [reactionCount, setReactionCount] = useState(0)
   const [streamSaved, setStreamSaved] = useState(false)
+  const [currentStreamId, setCurrentStreamId] = useState<string | null>(null)
   
   const clientRef = useRef<unknown>(null)
   const videoTrackRef = useRef<unknown>(null)
@@ -410,7 +411,7 @@ export default function AgoraVideoCall({ channelName, onStreamEnd, isHost = true
       />
       
       {/* Emoji Reactions Overlay */}
-      <EmojiReactions streamId={currentStreamId} onReaction={handleReaction} />
+      <EmojiReactions streamId={currentStreamId || ""} onReaction={handleReaction} />
       
       {isConnecting && (
         <div className="absolute inset-0 flex items-center justify-center bg-gray-900 bg-opacity-75">

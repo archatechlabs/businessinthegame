@@ -16,6 +16,14 @@ export default function StreamJoinRequest({ streamId, streamerName, onRequestSen
   const [message, setMessage] = useState('')
   const [requestStatus, setRequestStatus] = useState<'idle' | 'success' | 'error'>('idle')
 
+  // Debug logging
+  console.log('StreamJoinRequest rendered:', {
+    user: user ? { uid: user.uid, email: user.email } : null,
+    userProfile: userProfile ? { name: userProfile.name, role: userProfile.role } : null,
+    streamId,
+    streamerName
+  })
+
   const handleRequestJoin = async () => {
     if (!user || !userProfile) {
       alert('Please sign in to request to join the stream')
@@ -61,13 +69,13 @@ export default function StreamJoinRequest({ streamId, streamerName, onRequestSen
     }
   }
 
-  // Always show the button, but with different behavior if not logged in
   return (
     <>
       {/* Request Join Button - Always visible and more prominent */}
       <div className="absolute bottom-4 left-4 z-40">
         <button
           onClick={() => {
+            console.log('Request button clicked:', { user: !!user, userProfile: !!userProfile })
             if (!user) {
               alert('Please sign in to request to join the stream')
               return
@@ -85,6 +93,13 @@ export default function StreamJoinRequest({ streamId, streamerName, onRequestSen
           <span className="text-2xl">🎤</span>
           <span>Request to Join Live</span>
         </button>
+        
+        {/* Debug info */}
+        <div className="mt-2 text-xs text-white bg-black bg-opacity-50 p-2 rounded">
+          <div>User: {user ? '✅' : '❌'}</div>
+          <div>Profile: {userProfile ? '✅' : '❌'}</div>
+          <div>Stream: {streamId}</div>
+        </div>
       </div>
 
       {/* Request Modal */}

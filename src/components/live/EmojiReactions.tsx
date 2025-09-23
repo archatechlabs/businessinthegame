@@ -80,7 +80,7 @@ export default function EmojiReactions({ streamId, onReaction }: EmojiReactionsP
       timestamp: Date.now(),
       userId: user?.uid || 'local',
       username: userProfile?.name || 'You',
-      userAvatar: userProfile?.avatar || null
+      userAvatar: userProfile?.avatar || undefined
     }
 
     // Add locally for immediate display
@@ -116,7 +116,7 @@ export default function EmojiReactions({ streamId, onReaction }: EmojiReactionsP
         const newReactions = serverReactions.filter((r: EmojiReaction) => 
           !localIds.includes(r.id) && 
           r.userId !== user?.uid && // Don't show our own reactions from server
-          Date.now() - r.timestamp.getTime() < 5000 // Only show recent reactions (5 seconds)
+          Date.now() - new Date(r.timestamp).getTime() < 5000 // Only show recent reactions (5 seconds)
         )
 
         if (newReactions.length > 0) {
@@ -136,7 +136,7 @@ export default function EmojiReactions({ streamId, onReaction }: EmojiReactionsP
             // Remove after animation
             setTimeout(() => {
               setReactions(prev => prev.filter(r => 
-                !positionedReactions.some(nr => nr.id === r.id)
+                !positionedReactions.some((nr: any) => nr.id === r.id)
               ))
             }, 2500)
           }

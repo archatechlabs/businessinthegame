@@ -147,7 +147,7 @@ export default function WatchStreamPage() {
         <div className="text-center text-white">
           <div className="text-gray-400 mb-4 text-6xl">❌</div>
           <h2 className="text-2xl font-semibold mb-2">Stream Not Found</h2>
-          <p className="text-gray-300 mb-4">This stream may have ended or doesn't exist.</p>
+          <p className="text-gray-300 mb-4">This stream may have ended or doesndoesn'tapos;t exist.</p>
           <Link
             href="/live"
             className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
