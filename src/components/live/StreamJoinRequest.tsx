@@ -61,20 +61,29 @@ export default function StreamJoinRequest({ streamId, streamerName, onRequestSen
     }
   }
 
-  if (!user) {
-    return null
-  }
-
+  // Always show the button, but with different behavior if not logged in
   return (
     <>
-      {/* Request Join Button */}
+      {/* Request Join Button - Always visible and more prominent */}
       <div className="absolute bottom-4 left-4 z-40">
         <button
-          onClick={() => setShowModal(true)}
-          className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200 shadow-lg flex items-center gap-2"
+          onClick={() => {
+            if (!user) {
+              alert('Please sign in to request to join the stream')
+              return
+            }
+            setShowModal(true)
+          }}
+          className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-lg font-medium transition-colors duration-200 shadow-lg flex items-center gap-2 text-lg"
+          style={{
+            minWidth: '200px',
+            height: '50px',
+            fontSize: '16px',
+            fontWeight: 'bold'
+          }}
         >
-          <span>🎤</span>
-          <span>Request to Join</span>
+          <span className="text-2xl">🎤</span>
+          <span>Request to Join Live</span>
         </button>
       </div>
 
