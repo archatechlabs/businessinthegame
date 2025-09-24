@@ -192,8 +192,8 @@ export default function WatchStreamPage() {
                     onLeave={handleStopViewing}
                   />
                   <StreamJoinRequest 
-                    streamId={stream.id}
-                    streamerName={stream.streamerName}
+                    streamId={stream.id || ''}
+                    streamerName={stream.streamerName || 'Unknown Streamer'}
                     onRequestSent={() => console.log('Join request sent!')}
                   />
                 </>
@@ -270,13 +270,13 @@ export default function WatchStreamPage() {
                     />
                   ) : (
                     <span className="text-gray-300 text-lg">
-                      {stream.streamerName.charAt(0).toUpperCase()}
+                      {stream.streamerName?.charAt(0)?.toUpperCase() || '?'}
                     </span>
                   )}
                 </div>
                 <div>
-                  <h3 className="text-lg font-semibold text-white">{stream.streamerName}</h3>
-                  <p className="text-gray-400">@{stream.streamerUsername}</p>
+                  <h3 className="text-lg font-semibold text-white">{stream.streamerName || 'Unknown Streamer'}</h3>
+                  <p className="text-gray-400">@{stream.streamerUsername || 'unknown'}</p>
                 </div>
               </div>
               
