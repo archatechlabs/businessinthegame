@@ -180,7 +180,10 @@ export default function WatchStreamPage() {
           {/* Main Video Area */}
           <div className="lg:col-span-2">
             <div className="bg-black rounded-lg overflow-hidden shadow-lg relative">
-              {console.log('🔍 Render state check:', { isViewing, hasStream: !!stream, hasUser: !!user, hasUserProfile: !!userProfile })}
+              {(() => {
+                console.log('🔍 Render state check:', { isViewing, hasStream: !!stream, streamId: stream?.id })
+                return null
+              })()}
               {isViewing ? (
                 <>
                   <AgoraViewer 
