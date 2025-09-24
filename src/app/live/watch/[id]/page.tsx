@@ -65,6 +65,7 @@ export default function WatchStreamPage() {
           startedAt: new Date(streamData.startedAt), // Ensure Date object
         })
         setViewerCount(streamData.viewerCount)
+        console.log('🔍 Setting isViewing to true, streamData:', streamData)
         setIsViewing(true) // Automatically start viewing if stream data is loaded
       } catch (err) {
         console.error('Error loading stream:', err)
@@ -179,6 +180,7 @@ export default function WatchStreamPage() {
           {/* Main Video Area */}
           <div className="lg:col-span-2">
             <div className="bg-black rounded-lg overflow-hidden shadow-lg relative">
+              {console.log('🔍 Render state check:', { isViewing, hasStream: !!stream, hasUser: !!user, hasUserProfile: !!userProfile })}
               {isViewing ? (
                 <>
                   <AgoraViewer 

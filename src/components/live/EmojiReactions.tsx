@@ -136,7 +136,7 @@ export default function EmojiReactions({ streamId, onReaction }: EmojiReactionsP
             // Remove after animation
             setTimeout(() => {
               setReactions(prev => prev.filter(r => 
-                !positionedReactions.some((nr: any) => nr.id === r.id)
+                !positionedReactions.some((nr: unknown) => (nr as any).id === r.id)
               ))
             }, 2500)
           }

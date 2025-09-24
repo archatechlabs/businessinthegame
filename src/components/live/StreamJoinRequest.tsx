@@ -16,8 +16,8 @@ export default function StreamJoinRequest({ streamId, streamerName, onRequestSen
   const [message, setMessage] = useState('')
   const [requestStatus, setRequestStatus] = useState<'idle' | 'success' | 'error'>('idle')
 
-  // Debug logging
-  console.log('StreamJoinRequest rendered:', {
+  // Debug logging - this should always appear
+  console.log('🎯 StreamJoinRequest rendered:', {
     user: user ? { uid: user.uid, email: user.email } : null,
     userProfile: userProfile ? { name: userProfile.name, role: userProfile.role } : null,
     streamId,
@@ -75,7 +75,7 @@ export default function StreamJoinRequest({ streamId, streamerName, onRequestSen
       <div className="absolute bottom-4 left-4 z-40">
         <button
           onClick={() => {
-            console.log('Request button clicked:', { user: !!user, userProfile: !!userProfile })
+            console.log('🎯 Request button clicked:', { user: !!user, userProfile: !!userProfile })
             if (!user) {
               alert('Please sign in to request to join the stream')
               return
