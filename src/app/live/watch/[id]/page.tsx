@@ -25,6 +25,7 @@ interface LiveStream {
   viewerCount: number
   isLive: boolean
   startedAt: Date
+  startTime: Date // API returns this field
   thumbnail: string
   isAdminStream: boolean
   channelName: string
@@ -59,10 +60,11 @@ export default function WatchStreamPage() {
         if (!response.ok) {
           throw new Error('Failed to fetch stream')
         }
-        const streamData: LiveStream = await response.json()
+        const streamDataArray: LiveStream[] = await response.json()
+        const streamData = streamDataArray[0] // Get the first (and only) stream from the array
         setStream({
           ...streamData,
-          startedAt: new Date(streamData.startedAt), // Ensure Date object
+          startedAt: new Date(streamData.startTime || streamData.startedAt), // Use startTime from API
         })
         setViewerCount(streamData.viewerCount)
         console.log('🔍 Setting isViewing to true, streamData:', streamData)
