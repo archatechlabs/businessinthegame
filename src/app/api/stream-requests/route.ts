@@ -73,6 +73,20 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('❌ Error creating stream request:', error)
+    
+    // Handle Firebase/permission errors gracefully
+    if (error instanceof Error && (
+      error.message.includes('permission') || 
+      error.message.includes('Firebase') ||
+      error.message.includes('auth') ||
+      error.message.includes('network')
+    )) {
+      return NextResponse.json(
+        { error: 'Database connection error. Please try again.' },
+        { status: 503 }
+      )
+    }
+    
     return NextResponse.json(
       { error: 'Failed to create stream request', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
@@ -124,6 +138,17 @@ export async function GET(request: NextRequest) {
 
   } catch (error) {
     console.error('❌ Error fetching stream requests:', error)
+    
+    // Handle Firebase/permission errors gracefully
+    if (error instanceof Error && (
+      error.message.includes('permission') || 
+      error.message.includes('Firebase') ||
+      error.message.includes('auth') ||
+      error.message.includes('network')
+    )) {
+      return NextResponse.json([])
+    }
+    
     return NextResponse.json(
       { error: 'Failed to fetch stream requests', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }

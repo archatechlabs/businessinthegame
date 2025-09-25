@@ -91,14 +91,18 @@ export async function GET(request: NextRequest) {
     console.error('❌ Error fetching emoji reactions:', error)
     
     // Return empty array instead of error to prevent UI issues
-    if (error instanceof Error && error.message.includes('permission')) {
-      console.log('📝 Permission denied for emoji reactions, returning empty array')
+    if (error instanceof Error && (
+      error.message.includes('permission') || 
+      error.message.includes('Firebase') ||
+      error.message.includes('auth') ||
+      error.message.includes('network')
+    )) {
+      console.log('📝 Firebase/permission error for emoji reactions, returning empty array')
       return NextResponse.json([])
     }
     
-    return NextResponse.json(
-      { error: 'Failed to fetch emoji reactions', details: error instanceof Error ? error.message : 'Unknown error' },
-      { status: 500 }
-    )
+    // For other errors, also return empty array to prevent UI breaking
+    console.log('📝 Unknown error for emoji reactions, returning empty array')
+    return NextResponse.json([])
   }
 }
