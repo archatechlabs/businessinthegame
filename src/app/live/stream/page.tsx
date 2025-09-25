@@ -230,27 +230,28 @@ export default function StreamPage() {
                   Cancel
                 </button>
               </div>
-              <StreamRequestManager 
-                streamId={streamId || ""}
-                onRequestAccepted={(request) => console.log("Request accepted:", request)}
-                onRequestRejected={(request) => console.log("Request rejected:", request)}
-              />
             </div>
           ) : (
             <div className="space-y-6">
               {/* Stream Request Manager - Only show when streaming */}
               {streamId && (
-                <StreamRequestManager 
-                  streamId={streamId}
-                  onRequestAccepted={(request) => {
-                    console.log("Request accepted:", request)
-                    // TODO: Add logic to allow the user to join the stream
-                  }}
-                  onRequestRejected={(request) => {
-                    console.log("Request rejected:", request)
-                    // TODO: Add logic to notify the user their request was rejected
-                  }}
-                />
+                <>
+                  {(() => {
+                    console.log('🔍 StreamPage: Rendering StreamRequestManager with streamId:', streamId)
+                    return null
+                  })()}
+                  <StreamRequestManager 
+                    streamId={streamId}
+                    onRequestAccepted={(request) => {
+                      console.log("Request accepted:", request)
+                      // TODO: Add logic to allow the user to join the stream
+                    }}
+                    onRequestRejected={(request) => {
+                      console.log("Request rejected:", request)
+                      // TODO: Add logic to notify the user their request was rejected
+                    }}
+                  />
+                </>
               )}
 
               {/* Stream Header */}

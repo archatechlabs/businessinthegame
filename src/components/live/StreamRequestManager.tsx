@@ -34,18 +34,27 @@ export default function StreamRequestManager({
 
   // Fetch pending requests
   const fetchRequests = useCallback(async () => {
-    if (!streamId) return
+    if (!streamId) {
+      console.log('🔍 StreamRequestManager: No streamId provided')
+      return
+    }
 
+    console.log('🔍 StreamRequestManager: Fetching requests for streamId:', streamId)
     setIsLoading(true)
     try {
       const response = await fetch(`/api/stream-requests?streamId=${streamId}&status=pending`)
+      console.log('🔍 StreamRequestManager: API response status:', response.status)
+      
       if (response.ok) {
         const data = await response.json()
+        console.log('🔍 StreamRequestManager: Received requests:', data)
         setRequests(data)
         setPendingCount(data.length)
+      } else {
+        console.error('🔍 StreamRequestManager: API error:', response.status, await response.text())
       }
     } catch (error) {
-      console.error('Error fetching requests:', error)
+      console.error('🔍 StreamRequestManager: Error fetching requests:', error)
     } finally {
       setIsLoading(false)
     }
