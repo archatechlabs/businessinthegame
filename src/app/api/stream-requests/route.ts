@@ -123,16 +123,14 @@ export async function GET(request: NextRequest) {
       requestsQuery = query(
         collection(db, 'streamRequests'),
         where('streamId', '==', streamId),
-        where('status', '==', status),
-        orderBy('createdAt', 'desc')
+        where('status', '==', status)
       )
     } else if (requesterId) {
       // Get requests made by a specific user
       console.log('🔍 StreamRequest GET - Fetching requests for user:', requesterId)
       requestsQuery = query(
         collection(db, 'streamRequests'),
-        where('requesterId', '==', requesterId),
-        orderBy('createdAt', 'desc')
+        where('requesterId', '==', requesterId)
       )
     } else {
       console.log('❌ StreamRequest GET - Missing required parameters')
@@ -150,19 +148,34 @@ export async function GET(request: NextRequest) {
       updatedAt: doc.data().updatedAt?.toDate?.() || new Date()
     }))
 
+    // Sort by createdAt in descending order (newest first)
+    requests.sort((a, b) => {
+      const dateA = a.createdAt instanceof Date ? a.createdAt : new Date(a.createdAt)
+      const dateB = b.createdAt instanceof Date ? b.createdAt : new Date(b.createdAt)
+      return dateB.getTime() - dateA.getTime()
+    })
+
     console.log(`📋 Found ${requests.length} stream requests`)
     return NextResponse.json(requests)
 
   } catch (error) {
     console.error('❌ Error fetching stream requests:', error)
+    console.error('❌ Error details:', {
+      name: error instanceof Error ? error.name : 'Unknown',
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : 'No stack trace'
+    })
     
     // Handle Firebase/permission errors gracefully
     if (error instanceof Error && (
       error.message.includes('permission') || 
       error.message.includes('Firebase') ||
       error.message.includes('auth') ||
-      error.message.includes('network')
+      error.message.includes('network') ||
+      error.message.includes('index') ||
+      error.message.includes('orderBy')
     )) {
+      console.log('📝 Firebase/permission/index error, returning empty array')
       return NextResponse.json([])
     }
     
