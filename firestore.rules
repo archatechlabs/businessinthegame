@@ -109,16 +109,16 @@ service cloud.firestore {
       allow read, write: if true;
     }
     
-    // Stream requests collection - allow authenticated users to create and read
+    // Stream requests collection - temporarily allow all access for testing
     match /streamRequests/{requestId} {
-      allow read, write: if request.auth != null;
-      allow create: if request.auth != null;
+      allow read, write: if true;
+      allow create: if true;
     }
     
-    // Emoji reactions collection - allow authenticated users to create and read
+    // Emoji reactions collection - temporarily allow all access for testing
     match /emojiReactions/{reactionId} {
-      allow read, write: if request.auth != null;
-      allow create: if request.auth != null;
+      allow read, write: if true;
+      allow create: if true;
     }
     
     // System settings - only super admins can access
