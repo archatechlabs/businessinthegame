@@ -30,10 +30,21 @@ export default function RequestStatusChecker({
           const requests = await response.json()
           const acceptedRequest = requests.find((req: any) => req.streamId === streamId)
           
-          if (acceptedRequest && !showJoinPrompt) {
-            console.log('🎉 Request accepted!', acceptedRequest)
-            setAcceptedRequest(acceptedRequest)
-            setShowJoinPrompt(true)
+          // Only show join prompt if:
+          // 1. The request was actually accepted by the streamer
+          // 2. We haven't already shown the prompt
+          // 3. The request was accepted recently (within last 5 minutes)
+          if (acceptedRequest && !showJoinPrompt && acceptedRequest.status === 'accepted') {
+            const acceptedTime = new Date(acceptedRequest.updatedAt || acceptedRequest.createdAt)
+            const now = new Date()
+            const timeDiff = now.getTime() - acceptedTime.getTime()
+            const fiveMinutes = 5 * 60 * 1000 // 5 minutes in milliseconds
+            
+            if (timeDiff < fiveMinutes) {
+              console.log('🎉 Request accepted by streamer!', acceptedRequest)
+              setAcceptedRequest(acceptedRequest)
+              setShowJoinPrompt(true)
+            }
           }
         }
       } catch (error) {

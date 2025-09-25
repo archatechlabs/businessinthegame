@@ -116,7 +116,7 @@ export default function AgoraPublisher({
         console.log('🎬 Stream ID:', streamId)
         const AgoraRTCModule = await import('agora-rtc-sdk-ng')
         const client = AgoraRTCModule.default.createClient({
-          mode: 'live',
+          mode: 'rtc',
           codec: 'vp8'
         })
         

@@ -85,7 +85,7 @@ export default function AgoraViewer({ channelName, streamId, onLeave }: AgoraVie
   const generateToken = useCallback(async (channel: string, uid: number) => {
     try {
       console.log('🎫 Generating Agora token for viewer, channel:', channel, 'UID:', uid)
-      const response = await fetch(`/api/agora/token?channel=${channel}&uid=${uid}&role=audience`)
+      const response = await fetch(`/api/agora/token?channel=${channel}&uid=${uid}&role=subscriber`)
       
       if (!response.ok) {
         const errorData = await response.json()
@@ -133,7 +133,7 @@ export default function AgoraViewer({ channelName, streamId, onLeave }: AgoraVie
         console.log('🎬 Stream ID:', streamId)
         const AgoraRTCModule = await import('agora-rtc-sdk-ng')
         const client = AgoraRTCModule.default.createClient({
-          mode: 'live',
+          mode: 'rtc',
           codec: 'vp8'
         })
         
