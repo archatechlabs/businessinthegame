@@ -304,7 +304,7 @@ export default function StreamPage() {
           <div className="relative">
             <AgoraPublisher
               channelName={channelName}
-              streamId={currentStreamId || ''}
+              streamId={streamId || ''}
               onJoinComplete={() => console.log('✅ Joined user connected to stream')}
               onJoinError={(error) => console.error('❌ Joined user failed to connect:', error)}
               onLeave={() => {
