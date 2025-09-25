@@ -286,53 +286,21 @@ export default function StreamPage() {
 
               {/* Video Stream */}
               <div className="bg-black rounded-lg overflow-hidden">
-                {joinedUser ? (
-                  // Split screen view when someone joins
-                  <div className="grid grid-cols-2 gap-2 h-96">
-                    {/* Streamer's video */}
-                    <div className="relative">
-                      <AgoraVideoCall
-                        channelName={channelName}
-                        onStreamEnd={stopStream}
-                        isHost={true}
-                      />
-                      <div className="absolute top-2 left-2 bg-blue-600 text-white px-2 py-1 rounded text-sm">
-                        You (Host)
-                      </div>
-                    </div>
-                    
-          {/* Joined user's video */}
-          <div className="relative">
-            <AgoraPublisher
-              channelName={channelName}
-              streamId={streamId || ''}
-              onJoinComplete={() => console.log('✅ Joined user connected to stream')}
-              onJoinError={(error) => console.error('❌ Joined user failed to connect:', error)}
-              onLeave={() => {
-                console.log('👋 Joined user left stream')
-                removeJoinedUser()
-              }}
-            />
-            <div className="absolute top-2 left-2 bg-green-600 text-white px-2 py-1 rounded text-sm">
-              {joinedUser.name}
-            </div>
-            <button
-              onClick={removeJoinedUser}
-              className="absolute top-2 right-2 bg-red-600 hover:bg-red-700 text-white p-1 rounded-full"
-              title="Remove user"
-            >
-              ✕
-            </button>
-          </div>
-                  </div>
-                ) : (
-                  // Single view when no one has joined
+                <div className="relative h-96">
                   <AgoraVideoCall
                     channelName={channelName}
                     onStreamEnd={stopStream}
                     isHost={true}
                   />
-                )}
+                  <div className="absolute top-4 left-4 bg-blue-600 text-white px-3 py-1 rounded-lg text-sm font-medium">
+                    You (Host)
+                  </div>
+                  {joinedUser && (
+                    <div className="absolute top-4 right-4 bg-green-600 text-white px-3 py-1 rounded-lg text-sm font-medium">
+                      {joinedUser.name} joined
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Stream Info */}

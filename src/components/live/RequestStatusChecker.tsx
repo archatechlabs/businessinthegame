@@ -18,6 +18,7 @@ export default function RequestStatusChecker({
   const { user } = useAuth()
   const [acceptedRequest, setAcceptedRequest] = useState<any>(null)
   const [showJoinPrompt, setShowJoinPrompt] = useState(false)
+  const [processedRequestIds, setProcessedRequestIds] = useState<Set<string>>(new Set())
 
   // Check for accepted requests
   useEffect(() => {
@@ -33,8 +34,9 @@ export default function RequestStatusChecker({
           // Only show join prompt if:
           // 1. The request was actually accepted by the streamer
           // 2. We haven't already shown the prompt
-          // 3. The request was accepted recently (within last 5 minutes)
-          if (acceptedRequest && !showJoinPrompt && acceptedRequest.status === 'accepted') {
+          // 3. We haven't already processed this specific request
+          // 4. The request was accepted recently (within last 5 minutes)
+          if (acceptedRequest && !showJoinPrompt && acceptedRequest.status === 'accepted' && !processedRequestIds.has(acceptedRequest.id)) {
             const acceptedTime = new Date(acceptedRequest.updatedAt || acceptedRequest.createdAt)
             const now = new Date()
             const timeDiff = now.getTime() - acceptedTime.getTime()
@@ -44,6 +46,7 @@ export default function RequestStatusChecker({
               console.log('🎉 Request accepted by streamer!', acceptedRequest)
               setAcceptedRequest(acceptedRequest)
               setShowJoinPrompt(true)
+              setProcessedRequestIds(prev => new Set([...prev, acceptedRequest.id]))
             }
           }
         }
@@ -59,7 +62,7 @@ export default function RequestStatusChecker({
     const interval = setInterval(checkRequestStatus, 3000)
 
     return () => clearInterval(interval)
-  }, [user, streamId, showJoinPrompt])
+  }, [user, streamId])
 
   const handleJoinComplete = () => {
     console.log('✅ Successfully joined stream')

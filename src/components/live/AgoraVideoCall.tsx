@@ -24,12 +24,14 @@ export default function AgoraVideoCall({ channelName, onStreamEnd, isHost = true
   const [reactionCount, setReactionCount] = useState(0)
   const [streamSaved, setStreamSaved] = useState(false)
   const [currentStreamId, setCurrentStreamId] = useState<string | null>(null)
+  const [remoteUsers, setRemoteUsers] = useState<Map<number, { videoTrack?: any, audioTrack?: any, name?: string }>>(new Map())
   
   const clientRef = useRef<unknown>(null)
   const videoTrackRef = useRef<unknown>(null)
   const audioTrackRef = useRef<unknown>(null)
   const videoElementRef = useRef<HTMLVideoElement>(null)
   const audioElementRef = useRef<HTMLAudioElement>(null)
+  const remoteVideoRefs = useRef<Map<number, HTMLVideoElement>>(new Map())
   const initializedRef = useRef(false)
 
   // Check Agora App ID availability
@@ -169,6 +171,61 @@ export default function AgoraVideoCall({ channelName, onStreamEnd, isHost = true
         client.on('user-left', (user) => {
           console.log('👤 User left (streamer sees):', user.uid)
           setViewerCount(prev => Math.max(0, prev - 1))
+          // Remove user from remote users
+          setRemoteUsers(prev => {
+            const newMap = new Map(prev)
+            newMap.delete(user.uid)
+            return newMap
+          })
+        })
+
+        // Handle remote user streams
+        client.on('user-published', async (user, mediaType) => {
+          console.log('📺 User published stream (streamer sees):', user.uid, mediaType)
+          try {
+            // Add a small delay to ensure the stream is fully ready
+            await new Promise(resolve => setTimeout(resolve, 100))
+            await client.subscribe(user, mediaType)
+            console.log('✅ Subscribed to user stream (streamer):', user.uid, mediaType)
+            
+            // Update remote users state
+            setRemoteUsers(prev => {
+              const newMap = new Map(prev)
+              const existingUser = newMap.get(user.uid) || {}
+              if (mediaType === 'video') {
+                existingUser.videoTrack = user.videoTrack
+              }
+              if (mediaType === 'audio') {
+                existingUser.audioTrack = user.audioTrack
+              }
+              newMap.set(user.uid, existingUser)
+              return newMap
+            })
+          } catch (err) {
+            console.error('❌ Error subscribing to user stream (streamer):', err)
+          }
+        })
+
+        client.on('user-unpublished', (user, mediaType) => {
+          console.log('📺 User unpublished stream (streamer sees):', user.uid, mediaType)
+          setRemoteUsers(prev => {
+            const newMap = new Map(prev)
+            const existingUser = newMap.get(user.uid)
+            if (existingUser) {
+              if (mediaType === 'video') {
+                existingUser.videoTrack = undefined
+              }
+              if (mediaType === 'audio') {
+                existingUser.audioTrack = undefined
+              }
+              if (!existingUser.videoTrack && !existingUser.audioTrack) {
+                newMap.delete(user.uid)
+              } else {
+                newMap.set(user.uid, existingUser)
+              }
+            }
+            return newMap
+          })
         })
 
         // Handle connection errors gracefully
@@ -364,6 +421,18 @@ export default function AgoraVideoCall({ channelName, onStreamEnd, isHost = true
     }
   }
 
+  // Handle playing remote video tracks when they become available
+  useEffect(() => {
+    remoteUsers.forEach((user, uid) => {
+      if (user.videoTrack) {
+        const videoElement = remoteVideoRefs.current.get(uid)
+        if (videoElement) {
+          user.videoTrack.play(videoElement)
+        }
+      }
+    })
+  }, [remoteUsers])
+
   if (error) {
     return (
       <div className="w-full h-full bg-gray-900 flex items-center justify-center">
@@ -392,14 +461,61 @@ export default function AgoraVideoCall({ channelName, onStreamEnd, isHost = true
 
   return (
     <div className="w-full h-full bg-gray-900 relative">
-      <video
-        ref={videoElementRef}
-        autoPlay
-        playsInline
-        muted={false}
-        className="w-full h-full object-cover"
-        style={{ transform: 'scaleX(-1)' }} // Mirror the video
-      />
+      {remoteUsers.size > 0 ? (
+        // Split screen view when someone joins
+        <div className="grid grid-cols-2 gap-2 h-full">
+          {/* Streamer's video */}
+          <div className="relative">
+            <video
+              ref={videoElementRef}
+              autoPlay
+              playsInline
+              muted={false}
+              className="w-full h-full object-cover"
+              style={{ transform: 'scaleX(-1)' }} // Mirror the video
+            />
+            <div className="absolute top-2 left-2 bg-blue-600 text-white px-2 py-1 rounded text-sm">
+              You (Host)
+            </div>
+          </div>
+          
+          {/* Remote users' videos */}
+          <div className="relative">
+            {Array.from(remoteUsers.entries()).map(([uid, user]) => (
+              <div key={uid} className="w-full h-full">
+                <video
+                  ref={(el) => {
+                    if (el) {
+                      remoteVideoRefs.current.set(uid, el)
+                      // Play the video track when element is ready
+                      if (user.videoTrack) {
+                        user.videoTrack.play(el)
+                      }
+                    }
+                  }}
+                  autoPlay
+                  playsInline
+                  muted={false}
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute top-2 left-2 bg-green-600 text-white px-2 py-1 rounded text-sm">
+                  User {uid}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : (
+        // Single streamer view when no one has joined
+        <video
+          ref={videoElementRef}
+          autoPlay
+          playsInline
+          muted={false}
+          className="w-full h-full object-cover"
+          style={{ transform: 'scaleX(-1)' }} // Mirror the video
+        />
+      )}
       
       {/* Hidden audio element for streamer to hear themselves */}
       <audio
