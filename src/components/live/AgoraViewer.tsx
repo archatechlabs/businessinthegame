@@ -277,6 +277,9 @@ export default function AgoraViewer({ channelName, streamId, onLeave }: AgoraVie
       }
       cleanup()
     }
+    
+    // Call the initViewer function
+    initViewer()
   }, [agoraLoaded, agoraAppId, channelName, getNumericUid, generateToken])
 
   const stopViewing = async () => {
