@@ -67,7 +67,7 @@ export default function AgoraViewer({ channelName, streamId, onLeave }: AgoraVie
   // Generate Agora token for viewer
   const generateToken = useCallback(async (channel: string, uid: number) => {
     try {
-      console.log('�� Generating Agora token for viewer, channel:', channel, 'UID:', uid)
+      console.log('🎫 Generating Agora token for viewer, channel:', channel, 'UID:', uid)
       const response = await fetch(`/api/agora/token?channel=${channel}&uid=${uid}&role=subscriber`)
       
       if (!response.ok) {
@@ -153,14 +153,24 @@ export default function AgoraViewer({ channelName, streamId, onLeave }: AgoraVie
 
         // Handle connection errors gracefully
         client.on('exception', (event) => {
-          console.warn('⚠️ Agora connection exception:', event)
+          console.error('❌ Agora connection exception:', event)
+          setError(`Agora Error: ${event.code} - ${event.msg || 'Unknown error'}`)
+          setIsConnecting(false)
           // Don't treat analytics errors as fatal
           if (String(event.code) === 'CAN_NOT_GET_GATEWAY_SERVER' && event.msg?.includes('statscollector')) {
             console.log('📊 Analytics blocked by browser - this is normal and does not affect functionality')
+            setError(null) // Clear error for analytics issues
             return
           }
           // For other errors, show them but don't necessarily fail
           console.warn('Agora exception details:', event)
+        })
+
+        // Add error handler for join failures
+        client.on('error', (error) => {
+          console.error('❌ Agora client error:', error)
+          setError(`Agora Error: ${error.code} - ${error.message || 'Unknown error'}`)
+          setIsConnecting(false)
         })
 
         clientRef.current = client
@@ -174,19 +184,35 @@ export default function AgoraViewer({ channelName, streamId, onLeave }: AgoraVie
         console.log('👤 Using viewer UID:', uid)
         
         // Generate token with the same UID
+        console.log('🎫 Generating token for channel:', channelName, 'UID:', uid)
         const token = await generateToken(channelName, uid)
+        console.log('🎫 Token generated successfully, length:', token?.length || 0)
         
         // Join the channel as viewer
-        await client.join(
-          agoraAppId.trim(),
+        console.log('🎯 Attempting to join channel with:', {
+          appId: agoraAppId.trim(),
           channelName,
-          token,
-          uid
-        )
+          uid,
+          tokenLength: token?.length || 0
+        })
         
-        console.log('✅ Joined channel as viewer successfully')
-        setIsViewing(true)
-        setIsConnecting(false)
+        try {
+          await client.join(
+            agoraAppId.trim(),
+            channelName,
+            token,
+            uid
+          )
+          
+          console.log('✅ Joined channel as viewer successfully')
+          setIsViewing(true)
+          setIsConnecting(false)
+        } catch (joinError) {
+          console.error('❌ Failed to join channel:', joinError)
+          setError(`Failed to join channel: ${joinError instanceof Error ? joinError.message : 'Unknown error'}`)
+          setIsConnecting(false)
+          throw joinError // Re-throw to be caught by outer try-catch
+        }
 
       } catch (err) {
         console.error('❌ Error initializing viewer:', err)

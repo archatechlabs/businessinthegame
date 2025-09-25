@@ -58,26 +58,44 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    // Validate streamId format
+    if (typeof streamId !== 'string' || streamId.trim().length === 0) {
+      return NextResponse.json(
+        { error: 'Invalid streamId format' },
+        { status: 400 }
+      )
+    }
+
     // Get recent emoji reactions for this stream
     const reactionsQuery = query(
       collection(db, 'emojiReactions'),
-      where('streamId', '==', streamId),
+      where('streamId', '==', streamId.trim()),
       orderBy('timestamp', 'desc'),
-      limit(limitCount)
+      limit(Math.min(limitCount, 100)) // Cap at 100 to prevent abuse
     )
 
     const snapshot = await getDocs(reactionsQuery)
-    const reactions = snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-      timestamp: doc.data().timestamp?.toDate?.() || new Date()
-    }))
+    const reactions = snapshot.docs.map(doc => {
+      const data = doc.data()
+      return {
+        id: doc.id,
+        ...data,
+        timestamp: data.timestamp?.toDate?.() || new Date()
+      }
+    })
 
     console.log(`🎭 Found ${reactions.length} emoji reactions for stream ${streamId}`)
     return NextResponse.json(reactions)
 
   } catch (error) {
     console.error('❌ Error fetching emoji reactions:', error)
+    
+    // Return empty array instead of error to prevent UI issues
+    if (error instanceof Error && error.message.includes('permission')) {
+      console.log('📝 Permission denied for emoji reactions, returning empty array')
+      return NextResponse.json([])
+    }
+    
     return NextResponse.json(
       { error: 'Failed to fetch emoji reactions', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
