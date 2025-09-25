@@ -76,7 +76,12 @@ async function generateToken(channel: string, uid: number, role: string) {
     const expireTime = Math.floor(Date.now() / 1000) + 3600
 
     // Determine role
-    const rtcRole = role === 'subscriber' ? RtcRole.SUBSCRIBER : RtcRole.PUBLISHER
+    let rtcRole
+    if (role === 'subscriber' || role === 'audience') {
+      rtcRole = RtcRole.SUBSCRIBER
+    } else {
+      rtcRole = RtcRole.PUBLISHER
+    }
 
     console.log('🎫 Generating token with:', {
       appId: appId.substring(0, 8) + '...',
