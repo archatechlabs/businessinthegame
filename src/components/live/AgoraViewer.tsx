@@ -20,6 +20,14 @@ export default function AgoraViewer({ channelName, streamId, onLeave }: AgoraVie
   const [connectionState, setConnectionState] = useState<string>('disconnected')
   const [reactionCount, setReactionCount] = useState(0)
   
+  // Debug logging for component props and auth state
+  console.log('🎬 AgoraViewer component rendered with props:', {
+    channelName,
+    streamId,
+    userProfile: userProfile ? 'present' : 'null',
+    userUid: userProfile?.uid || 'none'
+  })
+  
   const clientRef = useRef<unknown>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
   const audioRef = useRef<HTMLAudioElement>(null)
@@ -27,11 +35,20 @@ export default function AgoraViewer({ channelName, streamId, onLeave }: AgoraVie
 
   // Check Agora App ID availability
   const agoraAppId = process.env.NEXT_PUBLIC_AGORA_APP_ID?.trim()
+  
+  // Debug environment variables
+  console.log('🔧 Environment check:', {
+    agoraAppId: agoraAppId ? `${agoraAppId.substring(0, 8)}...` : 'MISSING',
+    agoraAppIdLength: agoraAppId?.length || 0,
+    nodeEnv: process.env.NODE_ENV
+  })
 
   // Load Agora SDK
   useEffect(() => {
+    console.log('🔄 Starting Agora SDK load process...')
     const loadAgora = async () => {
       try {
+        console.log('📦 Importing agora-rtc-sdk-ng...')
         await import('agora-rtc-sdk-ng')
         console.log('✅ Agora SDK loaded for viewer')
         setAgoraLoaded(true)
@@ -98,6 +115,11 @@ export default function AgoraViewer({ channelName, streamId, onLeave }: AgoraVie
     const initViewer = async () => {
       // Prevent multiple initializations
       if (initializedRef.current || !agoraLoaded || !agoraAppId) {
+        console.log('🚫 Skipping Agora initialization:', { 
+          initialized: initializedRef.current, 
+          agoraLoaded, 
+          agoraAppId: agoraAppId ? 'present' : 'missing' 
+        })
         return
       }
 
@@ -107,6 +129,8 @@ export default function AgoraViewer({ channelName, streamId, onLeave }: AgoraVie
         setError(null)
 
         console.log('🎬 Initializing Agora client for viewer with App ID:', agoraAppId)
+        console.log('🎬 Channel name:', channelName)
+        console.log('🎬 Stream ID:', streamId)
         const AgoraRTCModule = await import('agora-rtc-sdk-ng')
         const client = AgoraRTCModule.default.createClient({
           mode: 'rtc',
@@ -187,28 +211,37 @@ export default function AgoraViewer({ channelName, streamId, onLeave }: AgoraVie
         console.log('🎫 Generating token for channel:', channelName, 'UID:', uid)
         const token = await generateToken(channelName, uid)
         console.log('🎫 Token generated successfully, length:', token?.length || 0)
+        console.log('🎫 Token preview:', token ? token.substring(0, 50) + '...' : 'null')
         
         // Join the channel as viewer
         console.log('🎯 Attempting to join channel with:', {
           appId: agoraAppId.trim(),
           channelName,
           uid,
-          tokenLength: token?.length || 0
+          tokenLength: token?.length || 0,
+          tokenValid: !!token
         })
         
         try {
-          await client.join(
+          console.log('🚀 Calling client.join()...')
+          const joinResult = await client.join(
             agoraAppId.trim(),
             channelName,
             token,
             uid
           )
           
-          console.log('✅ Joined channel as viewer successfully')
+          console.log('✅ Joined channel as viewer successfully, result:', joinResult)
           setIsViewing(true)
           setIsConnecting(false)
         } catch (joinError) {
           console.error('❌ Failed to join channel:', joinError)
+          console.error('❌ Join error details:', {
+            name: joinError instanceof Error ? joinError.name : 'Unknown',
+            message: joinError instanceof Error ? joinError.message : 'Unknown error',
+            code: (joinError as any)?.code,
+            reason: (joinError as any)?.reason
+          })
           setError(`Failed to join channel: ${joinError instanceof Error ? joinError.message : 'Unknown error'}`)
           setIsConnecting(false)
           throw joinError // Re-throw to be caught by outer try-catch
