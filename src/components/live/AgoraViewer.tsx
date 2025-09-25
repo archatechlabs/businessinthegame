@@ -191,7 +191,7 @@ export default function AgoraViewer({ channelName, streamId, onLeave }: AgoraVie
         })
 
         // Add error handler for join failures
-        client.on('error', (error) => {
+        client.on('error', (error: any) => {
           console.error('❌ Agora client error:', error)
           setError(`Agora Error: ${error.code} - ${error.message || 'Unknown error'}`)
           setIsConnecting(false)
