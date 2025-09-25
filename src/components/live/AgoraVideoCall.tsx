@@ -320,7 +320,7 @@ export default function AgoraVideoCall({ channelName, onStreamEnd, isHost = true
       }
       cleanup()
     }
-  }, [agoraLoaded, agoraAppId, channelName, getNumericUid, generateToken, saveStreamToDatabase, userProfile])
+  }, [agoraLoaded, agoraAppId, channelName, getNumericUid, generateToken, saveStreamToDatabase])
 
   const stopStreaming = async () => {
     try {

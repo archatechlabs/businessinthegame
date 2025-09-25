@@ -259,8 +259,8 @@ export default function StreamPage() {
             </div>
           ) : (
             <div className="space-y-6">
-              {/* Stream Request Manager - Only show when streaming */}
-              {streamId && (
+              {/* Stream Request Manager - Only show when streaming and no one has joined */}
+              {streamId && !joinedUser && (
                 <>
                   {(() => {
                     console.log('🔍 StreamPage: Rendering StreamRequestManager with streamId:', streamId)
@@ -270,6 +270,7 @@ export default function StreamPage() {
                     streamId={streamId}
                     onRequestAccepted={handleRequestAccepted}
                     onRequestRejected={handleRequestRejected}
+                    isVisible={!joinedUser}
                   />
                 </>
               )}

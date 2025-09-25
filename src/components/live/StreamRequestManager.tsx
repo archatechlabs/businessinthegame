@@ -19,12 +19,14 @@ interface StreamRequestManagerProps {
   streamId: string
   onRequestAccepted?: (request: StreamRequest) => void
   onRequestRejected?: (request: StreamRequest) => void
+  isVisible?: boolean
 }
 
 export default function StreamRequestManager({ 
   streamId, 
   onRequestAccepted, 
-  onRequestRejected 
+  onRequestRejected,
+  isVisible = true
 }: StreamRequestManagerProps) {
   const { user } = useAuth()
   const [requests, setRequests] = useState<StreamRequest[]>([])
@@ -107,7 +109,7 @@ export default function StreamRequestManager({
     return () => clearInterval(interval)
   }, [fetchRequests])
 
-  if (!user) return null
+  if (!user || !isVisible) return null
 
   return (
     <>
