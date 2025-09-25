@@ -154,6 +154,8 @@ export default function AgoraViewer({ channelName, streamId, onLeave }: AgoraVie
         client.on('user-published', async (user, mediaType) => {
           console.log('📺 User published stream:', user.uid, mediaType)
           try {
+            // Add a small delay to ensure the stream is fully ready
+            await new Promise(resolve => setTimeout(resolve, 100))
             await client.subscribe(user, mediaType)
             console.log('✅ Subscribed to user stream:', user.uid, mediaType)
             
@@ -168,6 +170,8 @@ export default function AgoraViewer({ channelName, streamId, onLeave }: AgoraVie
             }
           } catch (err) {
             console.error('❌ Error subscribing to user stream:', err)
+            // Don't treat subscription errors as fatal - the stream might not be ready yet
+            console.log('⚠️ Stream subscription failed, will retry on next publish event')
           }
         })
 
@@ -178,16 +182,18 @@ export default function AgoraViewer({ channelName, streamId, onLeave }: AgoraVie
         // Handle connection errors gracefully
         client.on('exception', (event) => {
           console.error('❌ Agora connection exception:', event)
-          setError(`Agora Error: ${event.code} - ${event.msg || 'Unknown error'}`)
-          setIsConnecting(false)
           // Don't treat analytics errors as fatal
           if (String(event.code) === 'CAN_NOT_GET_GATEWAY_SERVER' && event.msg?.includes('statscollector')) {
             console.log('📊 Analytics blocked by browser - this is normal and does not affect functionality')
-            setError(null) // Clear error for analytics issues
             return
           }
           // For other errors, show them but don't necessarily fail
           console.warn('Agora exception details:', event)
+          // Only set error for critical issues, not analytics or network issues
+          if (String(event.code) !== 'CAN_NOT_GET_GATEWAY_SERVER') {
+            setError(`Agora Error: ${event.code} - ${event.msg || 'Unknown error'}`)
+            setIsConnecting(false)
+          }
         })
 
         // Add error handler for join failures
