@@ -7,7 +7,10 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { streamId, requesterId, requesterName, requesterAvatar, message } = body
 
+    console.log('🔍 StreamRequest POST - Received data:', { streamId, requesterId, requesterName, requesterAvatar, message })
+
     if (!streamId || !requesterId || !requesterName) {
+      console.log('❌ StreamRequest POST - Missing required fields:', { streamId, requesterId, requesterName })
       return NextResponse.json(
         { error: 'Missing required fields: streamId, requesterId, requesterName' },
         { status: 400 }
@@ -18,7 +21,10 @@ export async function POST(request: NextRequest) {
     const streamRef = doc(db, 'streams', streamId)
     const streamSnap = await getDoc(streamRef)
     
+    console.log('🔍 StreamRequest POST - Checking stream:', { streamId, exists: streamSnap.exists() })
+    
     if (!streamSnap.exists()) {
+      console.log('❌ StreamRequest POST - Stream not found:', streamId)
       return NextResponse.json(
         { error: 'Stream not found' },
         { status: 404 }
@@ -26,7 +32,10 @@ export async function POST(request: NextRequest) {
     }
 
     const streamData = streamSnap.data()
+    console.log('🔍 StreamRequest POST - Stream data:', { isLive: streamData.isLive, streamerId: streamData.streamerId })
+    
     if (!streamData.isLive) {
+      console.log('❌ StreamRequest POST - Stream is not live:', streamId)
       return NextResponse.json(
         { error: 'Stream is not live' },
         { status: 400 }
@@ -42,7 +51,10 @@ export async function POST(request: NextRequest) {
     )
     const existingRequests = await getDocs(existingRequestsQuery)
     
+    console.log('🔍 StreamRequest POST - Checking existing requests:', { count: existingRequests.size })
+    
     if (!existingRequests.empty) {
+      console.log('❌ StreamRequest POST - User already has pending request')
       return NextResponse.json(
         { error: 'You already have a pending request for this stream' },
         { status: 400 }
@@ -101,10 +113,13 @@ export async function GET(request: NextRequest) {
     const requesterId = searchParams.get('requesterId')
     const status = searchParams.get('status') || 'pending'
 
+    console.log('🔍 StreamRequest GET - Parameters:', { streamId, requesterId, status })
+
     let requestsQuery
 
     if (streamId) {
       // Get requests for a specific stream
+      console.log('🔍 StreamRequest GET - Fetching requests for stream:', streamId)
       requestsQuery = query(
         collection(db, 'streamRequests'),
         where('streamId', '==', streamId),
@@ -113,12 +128,14 @@ export async function GET(request: NextRequest) {
       )
     } else if (requesterId) {
       // Get requests made by a specific user
+      console.log('🔍 StreamRequest GET - Fetching requests for user:', requesterId)
       requestsQuery = query(
         collection(db, 'streamRequests'),
         where('requesterId', '==', requesterId),
         orderBy('createdAt', 'desc')
       )
     } else {
+      console.log('❌ StreamRequest GET - Missing required parameters')
       return NextResponse.json(
         { error: 'Missing required parameter: streamId or requesterId' },
         { status: 400 }

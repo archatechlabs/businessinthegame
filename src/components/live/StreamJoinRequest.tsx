@@ -30,6 +30,14 @@ export default function StreamJoinRequest({ streamId, streamerName, onRequestSen
       return
     }
 
+    console.log('🎯 StreamJoinRequest - Starting request with data:', {
+      streamId,
+      requesterId: user.uid,
+      requesterName: userProfile.name || user.displayName || 'Anonymous',
+      requesterAvatar: userProfile.avatar || user.photoURL || null,
+      message: message.trim()
+    })
+
     setIsRequesting(true)
     setRequestStatus('idle')
 
@@ -48,9 +56,12 @@ export default function StreamJoinRequest({ streamId, streamerName, onRequestSen
         })
       })
 
+      console.log('🎯 StreamJoinRequest - API response status:', response.status)
       const data = await response.json()
+      console.log('🎯 StreamJoinRequest - API response data:', data)
 
       if (response.ok) {
+        console.log('✅ StreamJoinRequest - Request sent successfully')
         setRequestStatus('success')
         setShowModal(false)
         setMessage('')
@@ -58,12 +69,12 @@ export default function StreamJoinRequest({ streamId, streamerName, onRequestSen
           onRequestSent()
         }
       } else {
+        console.error('❌ StreamJoinRequest - Error sending request:', data.error)
         setRequestStatus('error')
-        console.error('Error sending request:', data.error)
       }
     } catch (error) {
+      console.error('❌ StreamJoinRequest - Network error:', error)
       setRequestStatus('error')
-      console.error('Error sending request:', error)
     } finally {
       setIsRequesting(false)
     }
