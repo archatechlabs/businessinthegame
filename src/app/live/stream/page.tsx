@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { canUserStream, getStreamQuality, getStreamingTier, generateChannelName } from '@/utils/agora'
 import { UserRole, UserTier } from '@/contexts/AuthContext'
 import AgoraVideoCall from '@/components/live/AgoraVideoCall'
+import AgoraPublisher from '@/components/live/AgoraPublisher'
 import StreamRequestManager from '@/components/live/StreamRequestManager'
 
 export default function StreamPage() {
@@ -299,36 +300,29 @@ export default function StreamPage() {
                       </div>
                     </div>
                     
-                    {/* Joined user's video */}
-                    <div className="relative bg-gray-800 flex items-center justify-center">
-                      <div className="text-center text-white">
-                        <div className="w-16 h-16 bg-gray-600 rounded-full flex items-center justify-center mx-auto mb-2">
-                          {joinedUser.avatar ? (
-                            <img
-                              src={joinedUser.avatar}
-                              alt={joinedUser.name}
-                              className="w-16 h-16 rounded-full object-cover"
-                            />
-                          ) : (
-                            <span className="text-2xl">
-                              {joinedUser.name.charAt(0).toUpperCase()}
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-sm font-medium">{joinedUser.name}</p>
-                        <p className="text-xs text-gray-400">Joining...</p>
-                      </div>
-                      <div className="absolute top-2 left-2 bg-green-600 text-white px-2 py-1 rounded text-sm">
-                        {joinedUser.name}
-                      </div>
-                      <button
-                        onClick={removeJoinedUser}
-                        className="absolute top-2 right-2 bg-red-600 hover:bg-red-700 text-white p-1 rounded-full"
-                        title="Remove user"
-                      >
-                        ✕
-                      </button>
-                    </div>
+          {/* Joined user's video */}
+          <div className="relative">
+            <AgoraPublisher
+              channelName={channelName}
+              streamId={currentStreamId || ''}
+              onJoinComplete={() => console.log('✅ Joined user connected to stream')}
+              onJoinError={(error) => console.error('❌ Joined user failed to connect:', error)}
+              onLeave={() => {
+                console.log('👋 Joined user left stream')
+                removeJoinedUser()
+              }}
+            />
+            <div className="absolute top-2 left-2 bg-green-600 text-white px-2 py-1 rounded text-sm">
+              {joinedUser.name}
+            </div>
+            <button
+              onClick={removeJoinedUser}
+              className="absolute top-2 right-2 bg-red-600 hover:bg-red-700 text-white p-1 rounded-full"
+              title="Remove user"
+            >
+              ✕
+            </button>
+          </div>
                   </div>
                 ) : (
                   // Single view when no one has joined

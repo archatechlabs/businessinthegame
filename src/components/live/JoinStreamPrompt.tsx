@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
+import AgoraPublisher from './AgoraPublisher'
 
 interface JoinStreamPromptProps {
   streamId: string
@@ -23,6 +24,8 @@ export default function JoinStreamPrompt({
   const [cameraEnabled, setCameraEnabled] = useState(false)
   const [micEnabled, setMicEnabled] = useState(false)
   const [permissionsGranted, setPermissionsGranted] = useState(false)
+  const [hasJoined, setHasJoined] = useState(false)
+  const [joinError, setJoinError] = useState<string | null>(null)
 
   // Check for camera and mic permissions
   useEffect(() => {
@@ -78,9 +81,8 @@ export default function JoinStreamPrompt({
 
     try {
       setIsJoining(true)
+      setJoinError(null)
       
-      // Here we would integrate with Agora to join as a publisher
-      // For now, we'll just simulate the join process
       console.log('🎤 Joining stream as publisher:', {
         streamId,
         channelName,
@@ -88,17 +90,35 @@ export default function JoinStreamPrompt({
         userId: user?.uid
       })
 
-      // Simulate join process
-      await new Promise(resolve => setTimeout(resolve, 2000))
+      // Set hasJoined to true to show the AgoraPublisher component
+      setHasJoined(true)
+      setIsJoining(false)
       
-      if (onJoinComplete) {
-        onJoinComplete()
-      }
     } catch (error) {
       console.error('Error joining stream:', error)
-      alert('Failed to join stream. Please try again.')
-    } finally {
+      setJoinError('Failed to join stream. Please try again.')
       setIsJoining(false)
+    }
+  }
+
+  const handleJoinComplete = () => {
+    console.log('✅ Successfully joined stream')
+    if (onJoinComplete) {
+      onJoinComplete()
+    }
+  }
+
+  const handleJoinError = (error: string) => {
+    console.error('❌ Error joining stream:', error)
+    setJoinError(error)
+    setHasJoined(false)
+  }
+
+  const handleLeave = () => {
+    console.log('👋 User left stream')
+    setHasJoined(false)
+    if (onJoinCancel) {
+      onJoinCancel()
     }
   }
 
@@ -106,6 +126,21 @@ export default function JoinStreamPrompt({
     if (onJoinCancel) {
       onJoinCancel()
     }
+  }
+
+  // If user has joined, show the AgoraPublisher component
+  if (hasJoined) {
+    return (
+      <div className="fixed inset-0 bg-black z-50">
+        <AgoraPublisher
+          channelName={channelName}
+          streamId={streamId}
+          onJoinComplete={handleJoinComplete}
+          onJoinError={handleJoinError}
+          onLeave={handleLeave}
+        />
+      </div>
+    )
   }
 
   return (
@@ -153,6 +188,14 @@ export default function JoinStreamPrompt({
           <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
             <p className="text-yellow-800 text-sm">
               <strong>Note:</strong> You'll need to allow camera and microphone access to join the stream.
+            </p>
+          </div>
+        )}
+
+        {joinError && (
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <p className="text-red-800 text-sm">
+              <strong>Error:</strong> {joinError}
             </p>
           </div>
         )}
