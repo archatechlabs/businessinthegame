@@ -20,6 +20,11 @@ export default function StreamPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [viewerCount, setViewerCount] = useState(0)
+  const [joinedUser, setJoinedUser] = useState<{
+    id: string
+    name: string
+    avatar?: string
+  } | null>(null)
 
   useEffect(() => {
     if (!user || !userProfile) {
@@ -113,9 +118,29 @@ export default function StreamPage() {
       setIsStreaming(false)
       setViewerCount(0)
       setStreamId(null)
+      setJoinedUser(null)
     } catch (err) {
       console.error('Error stopping stream:', err)
     }
+  }
+
+  const handleRequestAccepted = (request: any) => {
+    console.log('🎉 Stream request accepted:', request)
+    setJoinedUser({
+      id: request.requesterId,
+      name: request.requesterName,
+      avatar: request.requesterAvatar
+    })
+  }
+
+  const handleRequestRejected = (request: any) => {
+    console.log('❌ Stream request rejected:', request)
+    // Could add notification here
+  }
+
+  const removeJoinedUser = () => {
+    console.log('👋 Removing joined user')
+    setJoinedUser(null)
   }
 
   if (!user || !userProfile) {
@@ -242,14 +267,8 @@ export default function StreamPage() {
                   })()}
                   <StreamRequestManager 
                     streamId={streamId}
-                    onRequestAccepted={(request) => {
-                      console.log("Request accepted:", request)
-                      // TODO: Add logic to allow the user to join the stream
-                    }}
-                    onRequestRejected={(request) => {
-                      console.log("Request rejected:", request)
-                      // TODO: Add logic to notify the user their request was rejected
-                    }}
+                    onRequestAccepted={handleRequestAccepted}
+                    onRequestRejected={handleRequestRejected}
                   />
                 </>
               )}
@@ -265,11 +284,60 @@ export default function StreamPage() {
 
               {/* Video Stream */}
               <div className="bg-black rounded-lg overflow-hidden">
-                <AgoraVideoCall
-                  channelName={channelName}
-                  onStreamEnd={stopStream}
-                  isHost={true}
-                />
+                {joinedUser ? (
+                  // Split screen view when someone joins
+                  <div className="grid grid-cols-2 gap-2 h-96">
+                    {/* Streamer's video */}
+                    <div className="relative">
+                      <AgoraVideoCall
+                        channelName={channelName}
+                        onStreamEnd={stopStream}
+                        isHost={true}
+                      />
+                      <div className="absolute top-2 left-2 bg-blue-600 text-white px-2 py-1 rounded text-sm">
+                        You (Host)
+                      </div>
+                    </div>
+                    
+                    {/* Joined user's video */}
+                    <div className="relative bg-gray-800 flex items-center justify-center">
+                      <div className="text-center text-white">
+                        <div className="w-16 h-16 bg-gray-600 rounded-full flex items-center justify-center mx-auto mb-2">
+                          {joinedUser.avatar ? (
+                            <img
+                              src={joinedUser.avatar}
+                              alt={joinedUser.name}
+                              className="w-16 h-16 rounded-full object-cover"
+                            />
+                          ) : (
+                            <span className="text-2xl">
+                              {joinedUser.name.charAt(0).toUpperCase()}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-sm font-medium">{joinedUser.name}</p>
+                        <p className="text-xs text-gray-400">Joining...</p>
+                      </div>
+                      <div className="absolute top-2 left-2 bg-green-600 text-white px-2 py-1 rounded text-sm">
+                        {joinedUser.name}
+                      </div>
+                      <button
+                        onClick={removeJoinedUser}
+                        className="absolute top-2 right-2 bg-red-600 hover:bg-red-700 text-white p-1 rounded-full"
+                        title="Remove user"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  // Single view when no one has joined
+                  <AgoraVideoCall
+                    channelName={channelName}
+                    onStreamEnd={stopStream}
+                    isHost={true}
+                  />
+                )}
               </div>
 
               {/* Stream Info */}

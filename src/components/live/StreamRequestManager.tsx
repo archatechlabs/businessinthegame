@@ -63,6 +63,8 @@ export default function StreamRequestManager({
   // Handle request response
   const handleRequestResponse = async (requestId: string, status: 'accepted' | 'rejected') => {
     try {
+      console.log('🔍 StreamRequestManager - Handling request response:', { requestId, status })
+      
       const response = await fetch('/api/stream-requests', {
         method: 'PUT',
         headers: {
@@ -83,14 +85,18 @@ export default function StreamRequestManager({
         const request = requests.find(req => req.id === requestId)
         if (request) {
           if (status === 'accepted' && onRequestAccepted) {
+            console.log('✅ StreamRequestManager - Request accepted, calling onRequestAccepted')
             onRequestAccepted(request)
           } else if (status === 'rejected' && onRequestRejected) {
+            console.log('❌ StreamRequestManager - Request rejected, calling onRequestRejected')
             onRequestRejected(request)
           }
         }
+      } else {
+        console.error('❌ StreamRequestManager - Failed to update request status:', response.status)
       }
     } catch (error) {
-      console.error('Error responding to request:', error)
+      console.error('❌ StreamRequestManager - Error responding to request:', error)
     }
   }
 

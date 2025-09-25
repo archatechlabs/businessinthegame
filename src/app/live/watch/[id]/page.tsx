@@ -14,6 +14,7 @@ import {
 } from '@heroicons/react/24/outline'
 import AgoraViewer from '@/components/live/AgoraViewer'
 import StreamJoinRequest from '@/components/live/StreamJoinRequest'
+import RequestStatusChecker from '@/components/live/RequestStatusChecker'
 
 interface LiveStream {
   id: string
@@ -197,6 +198,11 @@ export default function WatchStreamPage() {
                     streamId={stream.id || ''}
                     streamerName={stream.streamerName || 'Unknown Streamer'}
                     onRequestSent={() => console.log('Join request sent!')}
+                  />
+                  <RequestStatusChecker
+                    streamId={stream.id || ''}
+                    channelName={stream.channelName || ''}
+                    streamerName={stream.streamerName || 'Unknown Streamer'}
                   />
                 </>
               ) : (
