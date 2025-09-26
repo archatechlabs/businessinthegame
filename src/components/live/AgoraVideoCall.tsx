@@ -174,7 +174,7 @@ export default function AgoraVideoCall({ channelName, onStreamEnd, isHost = true
           // Remove user from remote users
           setRemoteUsers(prev => {
             const newMap = new Map(prev)
-            newMap.delete(user.uid)
+            newMap.delete(Number(user.uid))
             return newMap
           })
         })
@@ -191,14 +191,15 @@ export default function AgoraVideoCall({ channelName, onStreamEnd, isHost = true
             // Update remote users state
             setRemoteUsers(prev => {
               const newMap = new Map(prev)
-              const existingUser = newMap.get(user.uid) || {}
+              const uid = Number(user.uid)
+              const existingUser = newMap.get(uid) || {}
               if (mediaType === 'video') {
                 existingUser.videoTrack = user.videoTrack
               }
               if (mediaType === 'audio') {
                 existingUser.audioTrack = user.audioTrack
               }
-              newMap.set(user.uid, existingUser)
+              newMap.set(uid, existingUser)
               return newMap
             })
           } catch (err) {
@@ -210,7 +211,8 @@ export default function AgoraVideoCall({ channelName, onStreamEnd, isHost = true
           console.log('📺 User unpublished stream (streamer sees):', user.uid, mediaType)
           setRemoteUsers(prev => {
             const newMap = new Map(prev)
-            const existingUser = newMap.get(user.uid)
+            const uid = Number(user.uid)
+            const existingUser = newMap.get(uid)
             if (existingUser) {
               if (mediaType === 'video') {
                 existingUser.videoTrack = undefined
@@ -219,9 +221,9 @@ export default function AgoraVideoCall({ channelName, onStreamEnd, isHost = true
                 existingUser.audioTrack = undefined
               }
               if (!existingUser.videoTrack && !existingUser.audioTrack) {
-                newMap.delete(user.uid)
+                newMap.delete(uid)
               } else {
-                newMap.set(user.uid, existingUser)
+                newMap.set(uid, existingUser)
               }
             }
             return newMap
